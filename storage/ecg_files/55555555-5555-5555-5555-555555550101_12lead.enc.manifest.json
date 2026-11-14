@@ -1,0 +1,11 @@
+{
+  "report_id": "55555555-5555-5555-5555-555555550101",
+  "file_name": "55555555-5555-5555-5555-555555550101_12lead.enc",
+  "sha256": "b8786116e0ada9f95b8938a17a4017989fc7f32b2e0aec24771c26671e9d017d",
+  "report_date": "2026-11-10",
+  "size_bytes": 46,
+  "encrypted": true,
+  "encryption_algorithm": "AES-256-GCM / ChaCha20-Poly1305",
+  "generated_at": "2026-11-13T20:21:00.410030+00:00",
+  "schema_version": "1.0"
+}

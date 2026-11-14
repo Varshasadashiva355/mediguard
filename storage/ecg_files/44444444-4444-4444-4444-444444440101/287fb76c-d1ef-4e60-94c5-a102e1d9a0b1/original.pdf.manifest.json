@@ -1,0 +1,12 @@
+{
+  "report_id": "287fb76c-d1ef-4e60-94c5-a102e1d9a0b1",
+  "patient_id": "44444444-4444-4444-4444-444444440101",
+  "file_name": "sample_clinical_ecg_report.pdf",
+  "storage_path": "44444444-4444-4444-4444-444444440101/287fb76c-d1ef-4e60-94c5-a102e1d9a0b1/original.pdf",
+  "sha256": "dd95ffb5a7d32e7172a6040efabe26e64642192bdfb9aae370650cd59d65030c",
+  "size_bytes": 594,
+  "content_type": "application/pdf",
+  "uploaded_at": "2026-11-13T17:53:12.670178+00:00",
+  "encrypted": true,
+  "version": "1.0"
+}

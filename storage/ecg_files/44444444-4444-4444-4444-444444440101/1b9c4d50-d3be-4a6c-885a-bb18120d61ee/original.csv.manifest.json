@@ -1,0 +1,12 @@
+{
+  "report_id": "1b9c4d50-d3be-4a6c-885a-bb18120d61ee",
+  "patient_id": "44444444-4444-4444-4444-444444440101",
+  "file_name": "sample_12lead_normal_sinus.csv",
+  "storage_path": "44444444-4444-4444-4444-444444440101/1b9c4d50-d3be-4a6c-885a-bb18120d61ee/original.csv",
+  "sha256": "5baa5d1498f8122d2b5e8cff39bf3ab47d51a9b48c20432221e77023720cefbb",
+  "size_bytes": 89460,
+  "content_type": "application/vnd.ms-excel",
+  "uploaded_at": "2026-11-13T17:53:11.560564+00:00",
+  "encrypted": true,
+  "version": "1.0"
+}

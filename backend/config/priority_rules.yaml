@@ -1,0 +1,52 @@
+# MediGuard AI – Clinical Review Priority Rules
+# Non-negotiable: These are example decision support rules – replace with hospital-approved escalation protocol.
+disclaimer: "Example clinical rules – replace with hospital-approved cardiology escalation protocol."
+
+version: "1.0.0"
+
+thresholds:
+  # Urgent escalation parameters
+  urgent_symptoms:
+    - "chest_pain"
+    - "syncope"
+    - "acute_dyspnea"
+    - "ischemic_chest_pressure"
+    - "cardiogenic_shock"
+
+  urgent_clinician_urgencies:
+    - "stat_emergency"
+    - "urgent"
+
+  recent_angioplasty_days_urgent: 14
+  
+  urgent_validated_findings:
+    - "acute_anterior_stemi"
+    - "inferior_stemi"
+    - "stemi"
+    - "ventricular_tachycardia"
+    - "complete_heart_block"
+
+  # Prompt escalation parameters
+  recent_angioplasty_days_prompt: 30
+  overdue_followup_days_prompt: 1
+  min_stent_count_prompt: 1
+  
+  prompt_validated_findings:
+    - "nstemi"
+    - "unstable_angina"
+    - "atrial_fibrillation"
+    - "atrial_flutter"
+
+  # Experimental ML decision support threshold
+  # NOTE: ML scores can ONLY add an informative reason or suggest prompt review.
+  # ML scores can NEVER elevate to Urgent on their own, and NEVER lower a category.
+  ml_informative_threshold: 0.65
+  ml_high_risk_classes:
+    - "MI"
+    - "STTC"
+    - "CD"
+
+safety_constraints:
+  ml_can_create_urgent: false
+  ml_can_lower_category: false
+  rule_explanation_required: true

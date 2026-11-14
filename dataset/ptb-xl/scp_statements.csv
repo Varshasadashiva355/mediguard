@@ -1,0 +1,11 @@
+code,description,diagnostic_class,diagnostic
+NORM,Normal ECG,NORM,1
+IMI,Inferior Myocardial Infarction,MI,1
+AMI,Anterior Myocardial Infarction,MI,1
+STTC,ST/T change non-specific,STTC,1
+NST_,Non-specific ST change,STTC,1
+LBBB,Left bundle branch block,CD,1
+RBBB,Right bundle branch block,CD,1
+LVH,Left ventricular hypertrophy,HYP,1
+RVH,Right ventricular hypertrophy,HYP,1
+SR,Sinus Rhythm,,0

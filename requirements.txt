@@ -1,0 +1,32 @@
+# MediGuard AI – Core Dependencies
+# Intelligent Cardiac Monitoring. Smarter Clinical Decisions.
+
+# Web & API Framework
+Flask>=3.0.0
+Flask-Cors>=4.0.0
+Werkzeug>=3.0.0
+python-dotenv>=1.0.1
+requests>=2.31.0
+PyYAML>=6.0.0
+apscheduler>=3.10.0
+
+# Security & Authentication
+PyJWT>=2.8.0
+cryptography>=42.0.0
+
+# Database & Supabase Integration
+supabase>=2.3.0
+postgrest>=0.16.0
+gotrue>=2.8.0
+
+# Machine Learning & Signal Processing
+numpy>=1.26.0
+pandas>=2.2.0
+scikit-learn>=1.4.0
+torch>=2.2.0
+matplotlib>=3.8.0
+Pillow>=10.0.0
+
+# Testing & Quality Assurance
+pytest>=8.0.0
+pytest-cov>=4.1.0

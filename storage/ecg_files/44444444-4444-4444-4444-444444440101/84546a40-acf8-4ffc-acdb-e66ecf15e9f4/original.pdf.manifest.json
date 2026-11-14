@@ -1,0 +1,12 @@
+{
+  "report_id": "84546a40-acf8-4ffc-acdb-e66ecf15e9f4",
+  "patient_id": "44444444-4444-4444-4444-444444440101",
+  "file_name": "cardiac_report.pdf",
+  "storage_path": "44444444-4444-4444-4444-444444440101/84546a40-acf8-4ffc-acdb-e66ecf15e9f4/original.pdf",
+  "sha256": "89681573e64c42a7d672fb945d7de1426997b167819d7c56abf055ef156f5902",
+  "size_bytes": 329,
+  "content_type": "application/pdf",
+  "uploaded_at": "2026-11-13T23:59:13.006584+00:00",
+  "encrypted": true,
+  "version": "1.0"
+}

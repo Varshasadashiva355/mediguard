@@ -1,0 +1,81 @@
+{
+  "macro_auroc": 0.5492,
+  "macro_auprc": 0.3211,
+  "macro_f1": 0.4004,
+  "test_sample_count": 22,
+  "per_superclass_metrics": {
+    "NORM": {
+      "optimal_threshold": 0.1,
+      "auroc": 0.7917,
+      "auprc": 0.4064,
+      "precision": 0.1818,
+      "recall": 1.0,
+      "f1_score": 0.3077,
+      "confusion_matrix": {
+        "true_negative": 0,
+        "false_positive": 18,
+        "false_negative": 0,
+        "true_positive": 4
+      }
+    },
+    "MI": {
+      "optimal_threshold": 0.1,
+      "auroc": 0.3214,
+      "auprc": 0.3019,
+      "precision": 0.3636,
+      "recall": 1.0,
+      "f1_score": 0.5333,
+      "confusion_matrix": {
+        "true_negative": 0,
+        "false_positive": 14,
+        "false_negative": 0,
+        "true_positive": 8
+      }
+    },
+    "STTC": {
+      "optimal_threshold": 0.1,
+      "auroc": 0.6571,
+      "auprc": 0.4249,
+      "precision": 0.3182,
+      "recall": 1.0,
+      "f1_score": 0.4828,
+      "confusion_matrix": {
+        "true_negative": 0,
+        "false_positive": 15,
+        "false_negative": 0,
+        "true_positive": 7
+      }
+    },
+    "CD": {
+      "optimal_threshold": 0.1,
+      "auroc": 0.6111,
+      "auprc": 0.2501,
+      "precision": 0.1818,
+      "recall": 1.0,
+      "f1_score": 0.3077,
+      "confusion_matrix": {
+        "true_negative": 0,
+        "false_positive": 18,
+        "false_negative": 0,
+        "true_positive": 4
+      }
+    },
+    "HYP": {
+      "optimal_threshold": 0.1,
+      "auroc": 0.3647,
+      "auprc": 0.2221,
+      "precision": 0.2273,
+      "recall": 1.0,
+      "f1_score": 0.3704,
+      "confusion_matrix": {
+        "true_negative": 0,
+        "false_positive": 17,
+        "false_negative": 0,
+        "true_positive": 5
+      }
+    }
+  },
+  "disclaimer": "MANDATORY CLINICAL DISCLAIMER: Research prototype decision support only. Model scores are uncalibrated experimental scores, NOT clinical diagnoses.",
+  "model_version": "v1.0.0-ptbxl",
+  "is_demonstration_data": false
+}

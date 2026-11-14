@@ -1,0 +1,12 @@
+{
+  "report_id": "2e34201e-18a9-4f5a-90ab-52aea37b927c",
+  "patient_id": "44444444-4444-4444-4444-444444440101",
+  "file_name": "sample_scanned_rhythm_strip.jpg",
+  "storage_path": "44444444-4444-4444-4444-444444440101/2e34201e-18a9-4f5a-90ab-52aea37b927c/original.jpg",
+  "sha256": "7ebf3775250e0209ad324ad3719961471d7c9b7921b1e607fbd0a72e6bd84b23",
+  "size_bytes": 35858,
+  "content_type": "image/jpeg",
+  "uploaded_at": "2026-11-13T17:52:13.162884+00:00",
+  "encrypted": true,
+  "version": "1.0"
+}

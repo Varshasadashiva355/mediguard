@@ -1,0 +1,12 @@
+{
+  "report_id": "9bcc2dd3-7cf7-4ded-8b21-a2f09ec6ee9c",
+  "patient_id": "44444444-4444-4444-4444-444444440104",
+  "file_name": "patient_MG-2026-000104_12lead_ecg.csv",
+  "storage_path": "44444444-4444-4444-4444-444444440104/9bcc2dd3-7cf7-4ded-8b21-a2f09ec6ee9c/original.csv",
+  "sha256": "6fd3ea9a7fd65e000ce4cbac6967db51ccb29fe6aa4f00a323c9043f3dcc8768",
+  "size_bytes": 90225,
+  "content_type": "text/csv",
+  "uploaded_at": "2026-11-13T23:54:04.931534+00:00",
+  "encrypted": true,
+  "version": "1.0"
+}

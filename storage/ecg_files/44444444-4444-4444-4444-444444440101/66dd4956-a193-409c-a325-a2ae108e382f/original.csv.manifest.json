@@ -1,0 +1,12 @@
+{
+  "report_id": "66dd4956-a193-409c-a325-a2ae108e382f",
+  "patient_id": "44444444-4444-4444-4444-444444440101",
+  "file_name": "baseline_copy.csv",
+  "storage_path": "44444444-4444-4444-4444-444444440101/66dd4956-a193-409c-a325-a2ae108e382f/original.csv",
+  "sha256": "188fe25254ff070f6b899706366ce8a2f9edc1e30d7f3a5d4f576a502180b67b",
+  "size_bytes": 119539,
+  "content_type": "application/vnd.ms-excel",
+  "uploaded_at": "2026-11-13T23:59:13.067087+00:00",
+  "encrypted": true,
+  "version": "1.0"
+}

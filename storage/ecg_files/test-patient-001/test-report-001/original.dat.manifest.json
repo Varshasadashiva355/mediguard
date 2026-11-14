@@ -1,0 +1,12 @@
+{
+  "report_id": "test-report-001",
+  "patient_id": "test-patient-001",
+  "file_name": "record.dat",
+  "storage_path": "test-patient-001/test-report-001/original.dat",
+  "sha256": "da2f0c9e1724fe899836ab1819975c399f91d92e9f0f73f5b47ae65a474a8811",
+  "size_bytes": 24,
+  "content_type": "application/octet-stream",
+  "uploaded_at": "2026-11-13T23:59:12.072943+00:00",
+  "encrypted": true,
+  "version": "1.0"
+}

@@ -1,0 +1,25 @@
+{
+  "patient_code": "MG-2026-000120",
+  "patient_name": "Dick (Synthetic) Grayson",
+  "patient_id": "44444444-4444-4444-4444-444444440120",
+  "dob": "1984-03-20",
+  "gender": "male",
+  "room_bed": "Step-Down 101",
+  "clinical_urgency": "routine",
+  "clinical_condition": "Athletic Heart with Ischemic Episode",
+  "file_name": "patient_MG-2026-000120_12lead_ecg.csv",
+  "sha256": "4b971ca601e309cb8d9ec76f1087cfc1d7639f76a59961ee48b04ea00c92ec17",
+  "size_bytes": 87454,
+  "sampling_rate_hz": 100.0,
+  "duration_seconds": 10.0,
+  "samples_per_lead": 1000,
+  "lead_count": 12,
+  "lead_order": ["I", "II", "III", "aVR", "aVL", "aVF", "V1", "V2", "V3", "V4", "V5", "V6"],
+  "ecg_hallmarks": {
+    "rhythm": "Sinus bradycardia at 58 bpm (athletic basal rhythm)",
+    "voltages": "Prominent R-wave voltages in precordial leads V4-V5 (physiologic LV hypertrophy)",
+    "st_segments": "Early repolarization pattern with concave upward ST elevation (0.08-0.12 mV) in V2-V4",
+    "conduction": "Normal PR and QRS intervals"
+  },
+  "created_at": "2026-11-14T05:33:00Z"
+}

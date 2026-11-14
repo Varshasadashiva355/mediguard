@@ -1,0 +1,12 @@
+{
+  "report_id": "39ac5165-dcb5-4e74-b56a-a2dc3c1af102",
+  "patient_id": "5cad8824-ca6f-4c6f-9992-712bee39f889",
+  "file_name": "sample_12lead_acute_stemi.csv",
+  "storage_path": "5cad8824-ca6f-4c6f-9992-712bee39f889/39ac5165-dcb5-4e74-b56a-a2dc3c1af102/original.csv",
+  "sha256": "d386ae9ccce59eb2774254bf5a43998b2e85bd2ee7bf7115ec3fd7c15cbe5a49",
+  "size_bytes": 88582,
+  "content_type": "application/vnd.ms-excel",
+  "uploaded_at": "2026-11-13T20:12:00.433877+00:00",
+  "encrypted": true,
+  "version": "1.0"
+}

@@ -1,0 +1,51 @@
+{
+  "train": {
+    "total_records": 175,
+    "NORM_count": 36,
+    "NORM_prevalence_pct": 20.57,
+    "MI_count": 76,
+    "MI_prevalence_pct": 43.43,
+    "STTC_count": 49,
+    "STTC_prevalence_pct": 28.0,
+    "CD_count": 38,
+    "CD_prevalence_pct": 21.71,
+    "HYP_count": 32,
+    "HYP_prevalence_pct": 18.29
+  },
+  "val": {
+    "total_records": 21,
+    "NORM_count": 7,
+    "NORM_prevalence_pct": 33.33,
+    "MI_count": 9,
+    "MI_prevalence_pct": 42.86,
+    "STTC_count": 7,
+    "STTC_prevalence_pct": 33.33,
+    "CD_count": 4,
+    "CD_prevalence_pct": 19.05,
+    "HYP_count": 5,
+    "HYP_prevalence_pct": 23.81
+  },
+  "test": {
+    "total_records": 22,
+    "NORM_count": 4,
+    "NORM_prevalence_pct": 18.18,
+    "MI_count": 8,
+    "MI_prevalence_pct": 36.36,
+    "STTC_count": 7,
+    "STTC_prevalence_pct": 31.82,
+    "CD_count": 4,
+    "CD_prevalence_pct": 18.18,
+    "HYP_count": 5,
+    "HYP_prevalence_pct": 22.73
+  },
+  "excluded_non_diagnostic_count": 22,
+  "superclasses": [
+    "NORM",
+    "MI",
+    "STTC",
+    "CD",
+    "HYP"
+  ],
+  "min_likelihood": 50.0,
+  "patient_leakage_audit": "PASSED: Zero patient leakage verified! (Train: 95 unique patients, Val: 12 unique patients, Test: 12 unique patients)"
+}

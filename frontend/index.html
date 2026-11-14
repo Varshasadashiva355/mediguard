@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MediGuard AI – Clinical Sign In</title>
+  <link rel="stylesheet" href="css/theme.css">
+  <style>
+    .login-container {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      background: radial-gradient(circle at 10% 20%, #123B4A 0%, #0F172A 90%);
+    }
+    .login-card-wrap {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1rem;
+    }
+    .login-card {
+      background: #FFFFFF;
+      border-radius: var(--radius-lg);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+      width: 100%;
+      max-width: 460px;
+      padding: 2.5rem 2.25rem;
+    }
+    .login-brand {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+    .login-brand-icon {
+      width: 48px;
+      height: 48px;
+      background-color: var(--color-teal-light);
+      color: var(--color-teal-dark);
+      border-radius: var(--radius-md);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.75rem;
+      margin-bottom: 0.75rem;
+    }
+    .demo-pills {
+      background: #F1F5F9;
+      border-radius: var(--radius-md);
+      padding: 0.875rem;
+      margin-bottom: 1.5rem;
+    }
+    .demo-pill-title {
+      font-size: 0.725rem;
+      font-weight: 700;
+      color: var(--color-text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.5rem;
+    }
+    .demo-pill-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    .demo-pill-btn {
+      padding: 0.35rem 0.65rem;
+      font-size: 0.775rem;
+      border-radius: var(--radius-sm);
+      border: 1px solid #CBD5E1;
+      background: #FFFFFF;
+      cursor: pointer;
+      font-weight: 600;
+      transition: var(--transition);
+    }
+    .demo-pill-btn:hover {
+      border-color: var(--color-teal);
+      color: var(--color-teal-dark);
+    }
+    .alert-error {
+      background-color: var(--color-emergency-bg);
+      border-left: 4px solid var(--color-emergency);
+      color: #991B1B;
+      padding: 0.75rem 1rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.85rem;
+      margin-bottom: 1.25rem;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-container">
+    <div class="login-card-wrap">
+      <div class="login-card">
+        <div class="login-brand">
+          <div class="login-brand-icon">🫀</div>
+          <h2>MediGuard AI</h2>
+          <p style="margin-top: 0.25rem; font-size: 0.875rem;">Intelligent Cardiac Monitoring. Smarter Clinical Decisions.</p>
+        </div>
+
+        <!-- Quick Demo Switcher -->
+        <div class="demo-pills">
+          <div class="demo-pill-title">Fast Demo Role Credentials</div>
+          <div class="demo-pill-group">
+            <button type="button" class="demo-pill-btn" onclick="fillCredentials('admin@mediguard.local', 'AdminPass123!')">
+              👑 Admin
+            </button>
+            <button type="button" class="demo-pill-btn" onclick="fillCredentials('cardio1@mediguard.local', 'CardioPass123!')">
+              🩺 Cardiologist
+            </button>
+            <button type="button" class="demo-pill-btn" onclick="fillCredentials('staff1@mediguard.local', 'StaffPass123!')">
+              📋 CCU Staff
+            </button>
+          </div>
+        </div>
+
+        <div id="login-error" class="alert-error"></div>
+
+        <form id="login-form">
+          <div class="form-group">
+            <label class="form-label" for="email">Hospital Email</label>
+            <input type="email" id="email" class="form-control" placeholder="doctor@mediguard.local" required autocomplete="username">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="password">Clinical Password</label>
+            <input type="password" id="password" class="form-control" placeholder="••••••••••••" required autocomplete="current-password">
+          </div>
+
+          <button type="submit" id="btn-login" class="btn btn-teal" style="width: 100%; padding: 0.875rem; margin-top: 0.5rem;">
+            <span id="btn-text">Authenticate & Sign In</span>
+            <span id="btn-spinner" style="display: none;">Authenticating...</span>
+          </button>
+        </form>
+
+        <div style="margin-top: 1.5rem; text-align: center;">
+          <small>Protected Clinical Decision-Support Portal &bull; Audited Session</small>
+        </div>
+      </div>
+    </div>
+
+    <!-- Permanent Clinical Disclaimer Footer -->
+    <div class="disclaimer-footer">
+      ⚠️ <span><strong>CLINICAL DECISION SUPPORT PROTOTYPE ONLY</strong> – NOT A VALIDATED DIAGNOSTIC MEDICAL DEVICE. DOCTORS OWN ALL CLINICAL DIAGNOSES & TRIAGE DECISIONS.</span>
+    </div>
+  </div>
+
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script>
+    // Redirect if already authenticated
+    if (Auth.isAuthenticated()) {
+      window.location.href = "dashboard.html";
+    }
+
+    function fillCredentials(email, pass) {
+      document.getElementById("email").value = email;
+      document.getElementById("password").value = pass;
+    }
+
+    const form = document.getElementById("login-form");
+    const errorEl = document.getElementById("login-error");
+    const btnLogin = document.getElementById("btn-login");
+    const btnText = document.getElementById("btn-text");
+    const btnSpinner = document.getElementById("btn-spinner");
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      errorEl.style.display = "none";
+      errorEl.textContent = "";
+
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value;
+
+      btnLogin.disabled = true;
+      btnText.style.display = "none";
+      btnSpinner.style.display = "inline";
+
+      try {
+        const result = await Auth.login(email, password);
+        if (result.success) {
+          API.toast(`Welcome back, ${result.user.full_name}`, "success");
+          setTimeout(() => {
+            window.location.href = "dashboard.html";
+          }, 600);
+        } else {
+          errorEl.textContent = result.message || "Invalid credentials. Please try again.";
+          errorEl.style.display = "block";
+        }
+      } catch (err) {
+        errorEl.textContent = err.message || "Authentication error. Check server connectivity.";
+        errorEl.style.display = "block";
+      } finally {
+        btnLogin.disabled = false;
+        btnText.style.display = "inline";
+        btnSpinner.style.display = "none";
+      }
+    });
+  </script>
+</body>
+</html>

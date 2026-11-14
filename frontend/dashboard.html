@@ -1,0 +1,3574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MediGuard AI – Cardiology Decision Support Dashboard</title>
+  <link rel="stylesheet" href="css/theme.css">
+  <!-- Chart.js for Live Clinical Visualizations -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    .emergency-banner {
+      background: linear-gradient(90deg, #FEF2F2 0%, #FFF1F2 100%);
+      border: 1px solid #FECACA;
+      border-left: 5px solid #EF4444;
+      border-radius: var(--radius-md);
+      padding: 0.875rem 1.25rem;
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+    .emergency-banner-text {
+      color: #991B1B;
+      font-size: 0.875rem;
+    }
+    .user-pill-wrap {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .user-avatar {
+      width: 38px;
+      height: 38px;
+      border-radius: var(--radius-full);
+      background-color: var(--color-primary);
+      color: #FFFFFF;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.95rem;
+    }
+    .stat-number {
+      font-size: 1.85rem;
+      font-weight: 800;
+      color: var(--color-primary-dark);
+      line-height: 1;
+      margin-top: 0.5rem;
+    }
+    .stat-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      color: var(--color-text-muted);
+    }
+    .filter-bar {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-bottom: 1.25rem;
+      background: #F8FAFC;
+      padding: 0.875rem;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--color-border);
+    }
+  </style>
+</head>
+<body>
+  <div class="app-layout">
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-brand">
+          <span>🫀</span>
+          <span>MediGuard AI</span>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="nav-section-title">Clinical Navigation</div>
+        <a href="javascript:void(0)" class="nav-link active" id="nav-overview" onclick="showOverviewTab()">
+          <span>📊</span>
+          <span>Overview Dashboard</span>
+        </a>
+        <a href="javascript:void(0)" class="nav-link" id="nav-patients" onclick="showPatientsTab()">
+          <span>👥</span>
+          <span>Cardiac Patients</span>
+        </a>
+        <a href="javascript:void(0)" class="nav-link" id="nav-upload" onclick="showEcgModal()">
+          <span>📈</span>
+          <span>Digital 12-Lead ECG</span>
+        </a>
+
+        <div class="nav-section-title">Physician Actions</div>
+        <a href="javascript:void(0)" class="nav-link nav-role-cardiologist" id="nav-reviews" onclick="showDoctorReviewsModal()">
+          <span>🩺</span>
+          <span>Doctor Reviews</span>
+        </a>
+
+        <div class="nav-section-title">Administration</div>
+        <a href="javascript:void(0)" class="nav-link nav-role-admin" id="nav-audit" onclick="showAuditTrailModal()">
+          <span>🛡️</span>
+          <span>System Audit Trail</span>
+        </a>
+      </nav>
+
+      <!-- User footer in sidebar -->
+      <div style="padding: 1.25rem 1rem; border-top: 1px solid rgba(255, 255, 255, 0.08); background: rgba(0,0,0,0.15);">
+        <div style="font-size: 0.775rem; color: #94A3B8;">DEPARTMENT</div>
+        <div id="sidebar-user-dept" style="font-size: 0.875rem; font-weight: 600; color: #FFFFFF;">Cardiology</div>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <div class="main-content">
+      <!-- Topbar -->
+      <header class="topbar">
+        <div class="topbar-left">
+          <button id="sidebar-toggle-btn" class="btn btn-outline btn-sm" aria-label="Toggle Navigation">
+            ☰ Menu
+          </button>
+          <div>
+            <span style="font-weight: 700; color: var(--color-primary-dark); font-size: 1.05rem;">Cardiology Clinical Decision Support</span>
+          </div>
+        </div>
+
+        <div class="topbar-right">
+          <!-- Hospital Emergency Protocol Button (RULE 9) -->
+          <button id="btn-emergency-protocol" class="btn btn-emergency btn-sm">
+            🚨 Emergency Protocol
+          </button>
+
+          <!-- About / Clinical Limitations -->
+          <button id="btn-about-modal" class="btn btn-outline btn-sm" onclick="openAboutModal()" title="View Prototype Disclaimers & Regulatory Limitations">
+            ℹ️ About / Limitations
+          </button>
+
+          <!-- Notifications Bell -->
+          <div class="notifications-dropdown-wrap" style="position: relative;">
+            <button id="btn-notifications-bell" class="btn btn-outline btn-sm" onclick="toggleNotificationsDropdown()" style="position: relative; padding: 0.35rem 0.65rem;" title="Clinical Notifications">
+              🔔 <span id="notification-badge" class="badge badge-stat" style="display:none; font-size: 0.65rem; padding: 0.15rem 0.35rem; position: absolute; top: -5px; right: -5px; border-radius: 9999px;">0</span>
+            </button>
+            <div id="notifications-menu" class="card" style="display:none; position: absolute; right: 0; top: 115%; width: 350px; max-height: 420px; overflow-y: auto; z-index: 10000; box-shadow: 0 10px 25px rgba(0,0,0,0.18); padding: 0.75rem; border: 1px solid var(--color-border); background: #ffffff;">
+              <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--color-border); padding-bottom: 0.5rem; margin-bottom: 0.5rem;">
+                <strong style="font-size: 0.875rem; color: var(--color-primary-dark);">🔔 Clinical Notifications</strong>
+                <button class="btn btn-outline btn-sm" onclick="markAllNotificationsRead()" style="font-size: 0.7rem; padding: 0.15rem 0.4rem;">Mark All Read</button>
+              </div>
+              <div id="notifications-list" style="display: flex; flex-direction: column; gap: 0.5rem;">
+                <div style="text-align: center; color: var(--color-text-muted); font-size: 0.8rem; padding: 1rem;">No new notifications.</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="user-pill-wrap">
+            <div class="user-avatar" id="user-avatar-initials">DR</div>
+            <div style="line-height: 1.2;">
+              <div id="topbar-user-name" style="font-weight: 700; font-size: 0.875rem;">Loading...</div>
+              <span id="topbar-user-role" class="badge">ROLE</span>
+            </div>
+          </div>
+
+          <button onclick="Auth.logout()" class="btn btn-outline btn-sm" title="Sign out current session">
+            Sign Out
+          </button>
+        </div>
+      </header>
+
+      <!-- Content Body -->
+      <div class="content-body">
+        <!-- Emergency Triage Rule Notice -->
+        <div class="emergency-banner">
+          <div class="emergency-banner-text">
+            <strong>Rule 9 Protocol:</strong> Critical findings, acute ischemic symptoms, or STEMI events must <em>never</em> wait on AI inference. Activate the hospital emergency response protocol immediately.
+          </div>
+          <button class="btn btn-emergency btn-sm" onclick="openTriageChecklistModal()">
+            📋 Open Triage Checklist
+          </button>
+        </div>
+
+        <!-- Metric Cards Grid (Live SQL Aggregates) -->
+        <div class="grid grid-cols-4" style="margin-bottom: 1.75rem;" id="dashboard-metric-cards">
+          <div class="card">
+            <div class="stat-label">Total Cardiac Patients</div>
+            <div class="stat-number" id="stat-patients-total">--</div>
+            <p style="margin-top: 0.5rem; font-size: 0.8rem;">Active cardiology cohort</p>
+          </div>
+
+          <div class="card">
+            <div class="stat-label">Uploaded 12-Lead ECGs</div>
+            <div class="stat-number" style="color: var(--color-teal);" id="stat-reports-total">--</div>
+            <p style="margin-top: 0.5rem; font-size: 0.8rem;">Waveforms stored in database</p>
+          </div>
+
+          <div class="card">
+            <div class="stat-label">Pending Doctor Reviews</div>
+            <div class="stat-number" style="color: var(--color-warning);" id="stat-pending-reviews">--</div>
+            <p style="margin-top: 0.5rem; font-size: 0.8rem;">Awaiting physician review</p>
+          </div>
+
+          <div class="card">
+            <div class="stat-label">Urgent Attention Flagged</div>
+            <div class="stat-number" style="color: var(--color-emergency);" id="stat-flagged-urgent">--</div>
+            <p style="margin-top: 0.5rem; font-size: 0.8rem;">STAT / Urgent cases</p>
+          </div>
+        </div>
+
+        <!-- Follow-Ups Alert Ribbon (Live SQL Count) -->
+        <div id="followups-alert-ribbon" style="display: flex; gap: 1rem; align-items: center; justify-content: space-between; background: #EFF6FF; border: 1px solid #BFDBFE; border-left: 4px solid #3B82F6; padding: 0.75rem 1.25rem; border-radius: var(--radius-md); margin-bottom: 1.75rem;">
+          <div style="font-size: 0.875rem; color: #1E40AF;">
+            <strong>Post-Procedure Follow-Up Monitor:</strong>
+            <span id="stat-upcoming-followups" style="font-weight: 700; color: #1E3A8A;">0</span> upcoming scheduled visits,
+            <span id="stat-overdue-followups" class="badge badge-overdue" style="font-weight: 700; margin-left: 0.25rem;">0 OVERDUE</span>
+          </div>
+          <button class="btn btn-outline btn-sm" onclick="showPatientsTab()">View Patient Roster</button>
+        </div>
+
+        <!-- Priority Queue & Recent Uploads Grid -->
+        <div class="grid grid-cols-2" style="margin-bottom: 1.75rem;">
+          <!-- Patient Priority Queue Widget -->
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <h3>🚨 Patient Priority Queue</h3>
+                <p>Clinician-assigned urgency triage (Stat Emergency → Urgent → Routine).</p>
+              </div>
+            </div>
+            <div class="table-responsive" style="max-height: 280px; overflow-y: auto;">
+              <table class="table" style="font-size: 0.825rem;">
+                <thead>
+                  <tr>
+                    <th>Patient</th>
+                    <th>Location</th>
+                    <th>Diagnosis / Urgency</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="priority-queue-body">
+                  <tr><td colspan="4" style="text-align: center; padding: 1.5rem;">Loading priority queue...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Recent ECG Waveform Uploads Table -->
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <h3>📈 Recent ECG Ingestions</h3>
+                <p>Digital 12-lead waveforms awaiting or completed review.</p>
+              </div>
+              <button class="btn btn-teal btn-sm" onclick="showEcgModal()">Ingest Waveform</button>
+            </div>
+            <div class="table-responsive" style="max-height: 280px; overflow-y: auto;">
+              <table class="table" style="font-size: 0.825rem;">
+                <thead>
+                  <tr>
+                    <th>Patient</th>
+                    <th>Urgency</th>
+                    <th>Status</th>
+                    <th>Time</th>
+                    <th style="text-align: right;">Action</th>
+                  </tr>
+                </thead>
+                <tbody id="recent-uploads-body">
+                  <tr><td colspan="5" style="text-align: center; padding: 1.5rem;">Loading recent uploads...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Live ML Model Inference Card (PTB-XL 5 Superclasses with Colored Progress Bars) -->
+        <div class="card" id="card-live-ml-findings" style="margin-bottom: 1.75rem; border-top: 3px solid var(--color-teal); box-shadow: var(--shadow-sm);">
+          <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+            <div>
+              <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                <h3 style="margin: 0; font-size: 1.15rem; color: var(--color-primary); display: flex; align-items: center; gap: 0.35rem;">
+                  <span>🧠</span> Live ML Model Inference Findings (ResNet-1D / PTB-XL)
+                </h3>
+                <span class="badge" style="background: var(--color-teal); color: #fff;">MODEL: v1.0.0-ptbxl</span>
+                <span class="badge" style="background: #E2E8F0; color: #475569;">UNCALIBRATED SCORES (0.00 - 1.00)</span>
+              </div>
+              <p style="margin: 0.35rem 0 0 0; font-size: 0.825rem; color: var(--color-text-muted);">
+                Real-time 5-superclass probabilistic outputs for the latest ingested digital 12-lead ECG. Research & decision-support only.
+              </p>
+            </div>
+            <div id="live-ml-header-actions" style="display: flex; gap: 0.5rem; align-items: center;">
+              <!-- Action buttons will be injected here -->
+            </div>
+          </div>
+          <div style="padding: 1.25rem;">
+            <div id="live-ml-content">
+              <div style="text-align: center; padding: 2rem; color: var(--color-text-muted);">
+                <div class="spinner" style="margin: 0 auto 0.75rem auto; width: 24px; height: 24px; border: 3px solid #CBD5E1; border-top-color: var(--color-teal); border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
+                Loading latest model inference & colored progress bars...
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Chart.js Hospital Analytics Section -->
+        <div class="card" style="margin-bottom: 1.75rem;">
+          <div class="card-header">
+            <div>
+              <h3>📊 Cardiology Hospital Analytics (SQL Aggregated Time-Series)</h3>
+              <p>Dynamic trends computed from hospital admission dates, uploads, and physician reviews.</p>
+            </div>
+            <button class="btn btn-outline btn-sm" onclick="loadDashboardCharts()">🔄 Refresh Charts</button>
+          </div>
+          <div class="grid grid-cols-3">
+            <div>
+              <div style="font-weight: 700; font-size: 0.85rem; margin-bottom: 0.5rem; text-align: center;">Monthly Patient Admissions</div>
+              <div class="chart-card-wrap"><canvas id="chart-monthly-patients"></canvas></div>
+            </div>
+            <div>
+              <div style="font-weight: 700; font-size: 0.85rem; margin-bottom: 0.5rem; text-align: center;">Weekly 12-Lead ECG Uploads</div>
+              <div class="chart-card-wrap"><canvas id="chart-weekly-reports"></canvas></div>
+            </div>
+            <div>
+              <div style="font-weight: 700; font-size: 0.85rem; margin-bottom: 0.5rem; text-align: center;">Doctor Review Agreement with Model</div>
+              <div class="chart-card-wrap"><canvas id="chart-review-agreement"></canvas></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ================================================================= -->
+        <!-- CARDIAC PATIENTS DIRECTORY (Phase 2 Core)                          -->
+        <!-- ================================================================= -->
+        <div class="card" id="patients-section" style="margin-bottom: 1.75rem;">
+          <div class="card-header">
+            <div>
+              <h3>Cardiology Patients Registry & Profiles</h3>
+              <p>Comprehensive patient monitoring, longitudinal stent history, and follow-up tracking.</p>
+            </div>
+            <div style="display: flex; gap: 0.5rem;">
+              <button class="btn btn-primary btn-sm" id="btn-register-new-patient" onclick="openRegisterPatientModal()">
+                ➕ Register New Patient
+              </button>
+              <button class="btn btn-outline btn-sm" onclick="loadPatients()">
+                🔄 Refresh
+              </button>
+            </div>
+          </div>
+
+          <!-- Multi-Parameter Filter & Search Bar -->
+          <div class="filter-bar">
+            <div style="flex: 1; min-width: 220px;">
+              <input type="text" id="patient-search-input" class="form-control" placeholder="🔍 Search patient by name, code (MG-...), or room..." onkeyup="handlePatientSearch(event)">
+            </div>
+            <div>
+              <select id="patient-urgency-filter" class="form-control" onchange="loadPatients()">
+                <option value="">All Urgencies</option>
+                <option value="stat_emergency">Stat Emergency</option>
+                <option value="urgent">Urgent Review</option>
+                <option value="routine">Routine</option>
+              </select>
+            </div>
+            <div>
+              <select id="patient-status-filter" class="form-control" onchange="loadPatients()">
+                <option value="active">Active Patients</option>
+                <option value="all">Active & Archived</option>
+                <option value="archived">Archived Only</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Patient Code</th>
+                  <th>Patient Name</th>
+                  <th>DOB / Gender</th>
+                  <th>Urgency</th>
+                  <th>Room / Location</th>
+                  <th>Diagnosis / Stent Summary</th>
+                  <th>Primary Cardiologist</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="patients-table-body">
+                <tr>
+                  <td colspan="8" style="text-align: center; padding: 2rem;">Loading synthetic patients...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Pagination Bar -->
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid var(--color-border);">
+            <div style="font-size: 0.85rem; color: var(--color-text-muted);" id="pagination-info">Showing patients...</div>
+            <div style="display: flex; gap: 0.5rem;">
+              <button class="btn btn-outline btn-sm" id="btn-prev-page" onclick="changePatientPage(-1)" disabled>Previous</button>
+              <button class="btn btn-outline btn-sm" id="btn-next-page" onclick="changePatientPage(1)">Next</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Permanent Clinical Disclaimer Footer -->
+      <footer class="disclaimer-footer">
+        ⚠️ <span><strong>MANDATORY CLINICAL DISCLAIMER:</strong> Research and clinical decision-support prototype ONLY. NOT a validated diagnostic product. Doctors own 100% of all diagnoses, triage decisions, and treatments.</span>
+      </footer>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- MODALS                                                                -->
+  <!-- ===================================================================== -->
+
+  <!-- Modal 1: Hospital Emergency Protocol & Stat Hotline (RULE 9) -->
+  <div class="modal-backdrop" id="modal-emergency-protocol">
+    <div class="modal-dialog">
+      <div class="modal-header emergency-header">
+        <h3 style="color: #991B1B; display: flex; align-items: center; gap: 0.5rem;">
+          🚨 Hospital Emergency Hotlines & STAT Escalation
+        </h3>
+        <button class="btn btn-outline btn-sm btn-close-emergency-modal">✕</button>
+      </div>
+      <div class="modal-body">
+        <div style="background: #FEF2F2; border-left: 4px solid #EF4444; padding: 1rem; border-radius: var(--radius-sm); margin-bottom: 1.25rem;">
+          <h4 style="color: #991B1B; margin-bottom: 0.25rem;">Non-Negotiable Rule 9 Directive</h4>
+          <p style="color: #7F1D1D; font-size: 0.85rem;">
+            Emergency symptoms (acute chest pain, hemodynamic instability, ST-elevation) follow hospital protocol immediately. Never delay patient treatment for AI analysis.
+          </p>
+        </div>
+
+        <h4 style="margin-bottom: 0.75rem;">Direct Internal Emergency Lines</h4>
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; margin-bottom: 1.5rem;">
+          <div style="background: #F1F5F9; padding: 0.75rem; border-radius: var(--radius-sm); text-align: center; border-top: 3px solid #DC2626;">
+            <div style="font-size: 0.725rem; font-weight: 700; color: #64748B;">CODE BLUE</div>
+            <div style="font-size: 1.25rem; font-weight: 800; color: #DC2626;">Ext. 2222</div>
+            <small style="font-size: 0.7rem; color: #64748B;">Cardiac Arrest</small>
+          </div>
+          <div style="background: #F1F5F9; padding: 0.75rem; border-radius: var(--radius-sm); text-align: center; border-top: 3px solid #0284C7;">
+            <div style="font-size: 0.725rem; font-weight: 700; color: #64748B;">CATH LAB (STAT)</div>
+            <div style="font-size: 1.25rem; font-weight: 800; color: #0284C7;">Ext. 4400</div>
+            <small style="font-size: 0.7rem; color: #64748B;">Primary PCI / Stent</small>
+          </div>
+          <div style="background: #F1F5F9; padding: 0.75rem; border-radius: var(--radius-sm); text-align: center; border-top: 3px solid #16A34A;">
+            <div style="font-size: 0.725rem; font-weight: 700; color: #64748B;">CARDIAC ICU</div>
+            <div style="font-size: 1.25rem; font-weight: 800; color: #16A34A;">Ext. 3300</div>
+            <small style="font-size: 0.7rem; color: #64748B;">Rapid Response Team</small>
+          </div>
+        </div>
+
+        <div style="background: #F8FAFC; border: 1px solid var(--color-border); padding: 1.25rem; border-radius: var(--radius-md); margin-bottom: 1rem;">
+          <h4 style="margin-bottom: 0.5rem; font-size: 0.95rem;">Hospital STAT Escalation Action</h4>
+          <p style="font-size: 0.85rem; margin-bottom: 1rem;">Broadcast an immediate urgent notification to the on-call Interventional Cardiologist & Cath Lab team.</p>
+          <button class="btn btn-emergency" id="btn-broadcast-cath-lab" onclick="triggerStatDispatchAlert()" style="width: 100%;">
+            📢 Broadcast STAT Cath Lab Alert (Ext. 4400)
+          </button>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline btn-close-emergency-modal">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 2: Bedside ACS & Acute Chest Pain Triage Checklist (RULE 9) -->
+  <div class="modal-backdrop" id="modal-triage-checklist">
+    <div class="modal-dialog" style="max-width: 650px;">
+      <div class="modal-header" style="background-color: #FEF3C7; border-bottom: 1px solid #FDE68A;">
+        <h3 style="color: #92400E; display: flex; align-items: center; gap: 0.5rem;">
+          📋 Bedside ACS Clinical Triage Checklist
+        </h3>
+        <button class="btn btn-outline btn-sm btn-close-triage-modal" onclick="closeTriageChecklistModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 0.875rem; margin-bottom: 1rem;">
+          Targeted bedside checklist for Acute Coronary Syndrome (ACS), acute ischemia, or suspected STEMI. Complete clinical actions before AI review:
+        </p>
+
+        <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1.25rem;">
+          <label style="display: flex; align-items: flex-start; gap: 0.75rem; padding: 0.75rem; background: #F8FAFC; border: 1px solid var(--color-border); border-radius: var(--radius-sm); cursor: pointer;">
+            <input type="checkbox" class="triage-check" value="12-Lead ECG Acquired & Interpreted (<10m)" checked onchange="updateTriageProgress()" style="margin-top: 0.25rem; width: 18px; height: 18px;">
+            <div>
+              <strong style="color: var(--color-primary-dark); font-size: 0.9rem;">1. Immediate 12-Lead ECG Acquired & Reviewed</strong>
+              <div style="font-size: 0.775rem; color: var(--color-text-muted);">Must be acquired and interpreted within 10 minutes of patient arrival.</div>
+            </div>
+          </label>
+
+          <label style="display: flex; align-items: flex-start; gap: 0.75rem; padding: 0.75rem; background: #F8FAFC; border: 1px solid var(--color-border); border-radius: var(--radius-sm); cursor: pointer;">
+            <input type="checkbox" class="triage-check" value="Aspirin 325mg Chewed" checked onchange="updateTriageProgress()" style="margin-top: 0.25rem; width: 18px; height: 18px;">
+            <div>
+              <strong style="color: var(--color-primary-dark); font-size: 0.9rem;">2. Antiplatelet Loading (Aspirin 325 mg)</strong>
+              <div style="font-size: 0.775rem; color: var(--color-text-muted);">Administer chewable Aspirin immediately unless severe true allergy or active GI hemorrhage.</div>
+            </div>
+          </label>
+
+          <label style="display: flex; align-items: flex-start; gap: 0.75rem; padding: 0.75rem; background: #F8FAFC; border: 1px solid var(--color-border); border-radius: var(--radius-sm); cursor: pointer;">
+            <input type="checkbox" class="triage-check" value="Supplemental O2 if SpO2 < 90%" onchange="updateTriageProgress()" style="margin-top: 0.25rem; width: 18px; height: 18px;">
+            <div>
+              <strong style="color: var(--color-primary-dark); font-size: 0.9rem;">3. Vital Signs & Oxygen Saturation</strong>
+              <div style="font-size: 0.775rem; color: var(--color-text-muted);">Titrate supplemental oxygen via nasal cannula only if SpO2 &lt; 90% or respiratory distress.</div>
+            </div>
+          </label>
+
+          <label style="display: flex; align-items: flex-start; gap: 0.75rem; padding: 0.75rem; background: #F8FAFC; border: 1px solid var(--color-border); border-radius: var(--radius-sm); cursor: pointer;">
+            <input type="checkbox" class="triage-check" value="Sublingual Nitroglycerin Evaluated" onchange="updateTriageProgress()" style="margin-top: 0.25rem; width: 18px; height: 18px;">
+            <div>
+              <strong style="color: var(--color-primary-dark); font-size: 0.9rem;">4. Vasodilator Assessment (Nitroglycerin 0.4mg SL)</strong>
+              <div style="font-size: 0.775rem; color: var(--color-text-muted);">Give 0.4 mg SL every 5m (max 3 doses). Contraindicated if SBP &lt; 90, RV infarction, or PDE-5i within 48h.</div>
+            </div>
+          </label>
+
+          <label style="display: flex; align-items: flex-start; gap: 0.75rem; padding: 0.75rem; background: #F8FAFC; border: 1px solid var(--color-border); border-radius: var(--radius-sm); cursor: pointer;">
+            <input type="checkbox" class="triage-check" value="Dual IV Access & Stat High-Sensitivity Troponin" onchange="updateTriageProgress()" style="margin-top: 0.25rem; width: 18px; height: 18px;">
+            <div>
+              <strong style="color: var(--color-primary-dark); font-size: 0.9rem;">5. Dual IV Access & High-Sensitivity Troponin</strong>
+              <div style="font-size: 0.775rem; color: var(--color-text-muted);">Place 2 large-bore peripheral IVs; send stat hs-cTnI / hs-cTnT, CBC, and coagulation panel.</div>
+            </div>
+          </label>
+
+          <label style="display: flex; align-items: flex-start; gap: 0.75rem; padding: 0.75rem; background: #F8FAFC; border: 1px solid var(--color-border); border-radius: var(--radius-sm); cursor: pointer;">
+            <input type="checkbox" class="triage-check" value="On-Call Cardiologist Paged" onchange="updateTriageProgress()" style="margin-top: 0.25rem; width: 18px; height: 18px;">
+            <div>
+              <strong style="color: var(--color-primary-dark); font-size: 0.9rem;">6. Interventional Cardiologist Stat Page</strong>
+              <div style="font-size: 0.775rem; color: var(--color-text-muted);">Notify on-call cardiologist for rapid door-to-balloon Cath Lab transfer (&lt;90 minutes).</div>
+            </div>
+          </label>
+        </div>
+
+        <!-- Progress Indicator -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; font-size: 0.85rem; font-weight: 600;">
+          <span>Checklist Progress:</span>
+          <span id="triage-progress-text" style="color: var(--color-teal-dark);">2 of 6 actions verified</span>
+        </div>
+        <div style="width: 100%; height: 8px; background: #E2E8F0; border-radius: var(--radius-full); overflow: hidden; margin-bottom: 1.25rem;">
+          <div id="triage-progress-bar" style="width: 33%; height: 100%; background: var(--color-teal); transition: width 0.3s ease;"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline btn-close-triage-modal" onclick="closeTriageChecklistModal()">Cancel</button>
+        <button class="btn btn-teal" id="btn-save-triage" onclick="signTriageAssessment()">
+          💾 Sign & Log Triage Assessment
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 3: ECG File Upload & Multi-Pipeline Ingestion -->
+  <div class="modal-backdrop" id="modal-ecg-upload">
+    <div class="modal-dialog" style="max-width: 700px;">
+      <div class="modal-header" style="background-color: #F0FDF4; border-bottom: 1px solid #BBF7D0;">
+        <h3 style="color: #166534; display: flex; align-items: center; gap: 0.5rem;">
+          📈 ECG Ingestion & Clinical Storage
+        </h3>
+        <button class="btn btn-outline btn-sm" onclick="closeEcgUploadModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <!-- Information Notice (Blue/Teal Protocol Banner, NOT an Error) -->
+        <div style="background: #F0FDFA; border-left: 4px solid #14B8A6; padding: 0.875rem 1rem; border-radius: var(--radius-sm); margin-bottom: 1.25rem;">
+          <div style="display: flex; align-items: center; gap: 0.4rem; color: #0F766E; font-weight: 700; font-size: 0.875rem;">
+            <span>ℹ️</span> Standard Protocol Information & Ingestion Guidelines
+          </div>
+          <p style="color: #134E4A; font-size: 0.8rem; margin-top: 0.35rem; line-height: 1.45;">
+            <strong>Rule 4 Pipeline Protocol:</strong> Digital 12-lead waveforms (<code>.csv</code>) automatically route to the PyTorch ML inference engine. Scanned images (<code>.jpg</code>, <code>.png</code>) and clinical documents (<code>.pdf</code>) route directly to the Attending Physician Review Queue for manual doctor diagnosis without automated scoring.
+          </p>
+        </div>
+
+        <form id="ecg-upload-form" onsubmit="handleEcgUploadSubmit(event)">
+          <div class="grid grid-cols-2" style="gap: 1rem; margin-bottom: 1rem;">
+            <div class="form-group">
+              <label class="form-label">Monitored Patient *</label>
+              <select id="ecg-patient-select" class="form-control" required>
+                <option value="">Select patient...</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Recording Date *</label>
+              <input type="date" id="ecg-report-date" class="form-control" required>
+            </div>
+          </div>
+
+          <!-- Drag and Drop Zone -->
+          <div class="form-group">
+            <label class="form-label">ECG File (Digital 12-Lead CSV, JPG, PNG, or PDF) *</label>
+            <div id="ecg-drop-zone" style="border: 2px dashed #94A3B8; padding: 1.5rem; text-align: center; border-radius: var(--radius-md); background: #F8FAFC; cursor: pointer; transition: all 0.2s ease;">
+              <div style="font-size: 2.25rem; margin-bottom: 0.25rem;">📁</div>
+              <div style="font-size: 0.95rem; font-weight: 600; color: var(--color-primary-dark);">Drag & drop ECG file here, or click to browse</div>
+              <p style="font-size: 0.775rem; color: var(--color-text-muted); margin: 0.25rem 0 0.75rem 0;">
+                Supported formats: <strong>.csv</strong> (12 leads), <strong>.jpg / .png</strong> (scanned strips), <strong>.pdf</strong> (clinical reports). Max size 15MB.
+              </p>
+              <button type="button" class="btn btn-outline btn-sm" onclick="triggerFileInput(event)">
+                📂 Browse Computer for ECG File
+              </button>
+            </div>
+            <input type="file" id="ecg-file-input" style="display: none;" accept=".csv,.jpg,.jpeg,.png,.pdf" onchange="handleFileSelect(event)">
+
+            <!-- Quick Preset Samples Toolbar -->
+            <div style="margin-top: 0.65rem; background: #F8FAFC; border: 1px solid #E2E8F0; padding: 0.65rem 0.85rem; border-radius: var(--radius-sm);">
+              <div style="font-size: 0.75rem; color: #475569; font-weight: 700; margin-bottom: 0.4rem; display: flex; align-items: center; gap: 0.35rem;">
+                <span>⚡</span> One-Click Verified Clinical Test Samples:
+              </div>
+              <div style="display: flex; gap: 0.4rem; flex-wrap: wrap;">
+                <button type="button" class="btn btn-sm" style="font-size: 0.725rem; padding: 0.25rem 0.6rem; background: #E0F2FE; color: #0369A1; border: 1px solid #BAE6FD;" onclick="loadPresetSample('patient_MG-2026-000104_12lead_ecg.csv', 'MG-2026-000104')">
+                  📥 Load Beatrice Campbell 12-Lead (.csv)
+                </button>
+                <button type="button" class="btn btn-sm" style="font-size: 0.725rem; padding: 0.25rem 0.6rem; background: #F0FDF4; color: #15803D; border: 1px solid #BBF7D0;" onclick="loadPresetSample('sample_12lead_acute_stemi.csv')">
+                  📥 Load Anterior STEMI (.csv)
+                </button>
+                <button type="button" class="btn btn-sm" style="font-size: 0.725rem; padding: 0.25rem 0.6rem; background: #F5F3FF; color: #6D28D9; border: 1px solid #DDD6FE;" onclick="loadPresetSample('patient_MG-2026-000101_12lead_clinical_operators.pdf', 'MG-2026-000101')">
+                  📥 Load Clinical Operator PDF (.pdf)
+                </button>
+              </div>
+            </div>
+
+            <!-- File details & pipeline badge -->
+            <div id="selected-file-card" style="display: none; margin-top: 0.75rem; background: #FFFFFF; border: 2px solid #14B8A6; padding: 0.75rem 1rem; border-radius: var(--radius-sm); align-items: center; justify-content: space-between;">
+              <div>
+                <div style="display: flex; align-items: center; gap: 0.4rem;">
+                  <span style="color: #0D9488; font-size: 1rem;">✅</span>
+                  <span id="selected-file-name" style="font-weight: 700; font-size: 0.875rem; color: #0F172A;">--</span>
+                  <span id="selected-file-size" style="color: var(--color-text-muted); font-size: 0.775rem;">(-- KB)</span>
+                </div>
+                <div id="selected-file-badge" style="margin-top: 0.35rem;"></div>
+              </div>
+              <button type="button" class="btn btn-outline btn-sm" onclick="clearSelectedFile()">✕ Remove</button>
+            </div>
+          </div>
+
+          <!-- Upload Progress Bar -->
+          <div id="upload-progress-wrap" style="display: none; margin-bottom: 1rem;">
+            <div style="display: flex; justify-content: space-between; font-size: 0.775rem; margin-bottom: 0.25rem;">
+              <span>Uploading securely to private storage...</span>
+              <span id="upload-progress-percent">0%</span>
+            </div>
+            <div style="width: 100%; height: 8px; background: #E2E8F0; border-radius: 4px; overflow: hidden;">
+              <div id="upload-progress-bar" style="width: 0%; height: 100%; background: var(--color-teal); transition: width 0.1s ease;"></div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Clinical Acquisition Notes</label>
+            <textarea id="ecg-notes-input" class="form-control" rows="2" placeholder="e.g. Baseline 12-lead acquired in CCU bed 4. Patient asymptomatic."></textarea>
+          </div>
+
+          <div class="modal-footer" style="padding: 1rem 0 0 0; margin-top: 1rem;">
+            <button type="button" class="btn btn-outline" onclick="closeEcgUploadModal()">Cancel</button>
+            <button type="submit" class="btn btn-teal" id="btn-submit-ecg-upload">
+              🚀 Ingest & Route to Pipeline
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 3B: ECG Analysis & Waveform Result Viewer -->
+  <div class="modal-backdrop" id="modal-ecg-analysis">
+    <div class="modal-dialog" style="max-width: 920px;">
+      <div class="modal-header" style="background: linear-gradient(90deg, #123B4A 0%, #0F172A 100%); color: #FFFFFF;">
+        <div>
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <h3 style="color: #FFFFFF; margin: 0; font-size: 1.25rem;">ECG Analysis & Clinical Decision Support</h3>
+            <span id="analysis-format-badge" class="badge" style="background: var(--color-teal); color: #FFFFFF;">DIGITAL 12-LEAD</span>
+            <span id="analysis-quality-badge" class="badge" style="background: #10B981; color: #FFFFFF;">QUALITY: HIGH</span>
+          </div>
+          <div style="font-size: 0.8rem; color: #94A3B8; margin-top: 0.25rem;">
+            Patient: <strong id="analysis-patient-code" style="color: #FFFFFF;">--</strong> &bull; Report ID: <span id="analysis-report-id" style="font-family: monospace;">--</span> &bull; Date: <span id="analysis-report-date">--</span>
+          </div>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="closeEcgAnalysisModal()" style="color: #FFFFFF; border-color: rgba(255,255,255,0.3);">✕</button>
+      </div>
+      <div class="modal-body" style="padding: 1.25rem 1.5rem;">
+        <!-- Demo Banner if is_demo -->
+        <div id="analysis-demo-warning" style="display: none; background: #FEF3C7; border-left: 4px solid #D97706; padding: 0.75rem 1rem; border-radius: var(--radius-sm); margin-bottom: 1rem; color: #92400E; font-weight: 600; font-size: 0.85rem;">
+          ⚠️ DEMONSTRATION DATA – No trained model weights loaded. Values are synthetic reference scores.
+        </div>
+
+        <!-- Non-ML Incompatible Banner (for image / pdf) -->
+        <div id="analysis-non-ml-banner" style="display: none; background: #EFF6FF; border-left: 4px solid #3B82F6; padding: 1rem; border-radius: var(--radius-sm); margin-bottom: 1.25rem;">
+          <h4 style="color: #1E40AF; margin: 0 0 0.35rem 0; font-size: 0.95rem;">📄 Direct Physician Review Required (No Automated ML Inference)</h4>
+          <p style="color: #1E3A8A; font-size: 0.825rem; margin: 0;">
+            This file was ingested as an image or clinical PDF document. Under Rule 4, automated ResNet-1D inference applies exclusively to digital 12-lead waveforms. This recording has been routed to the attending cardiologist queue for direct visual review.
+          </p>
+          <div style="margin-top: 0.75rem;">
+            <a id="btn-view-original-file" href="#" target="_blank" class="btn btn-outline btn-sm">👁️ Open Original Document / Image</a>
+          </div>
+        </div>
+
+        <!-- Waveform Section (for digital 12-lead) -->
+        <div id="analysis-waveform-section" style="margin-bottom: 1.5rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+            <h4 style="margin: 0; font-size: 0.9rem; color: var(--color-primary-dark);">📈 Digital 12-Lead Waveform Inspection (Precordial & Limb Leads)</h4>
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+              <select id="analysis-lead-filter" class="form-control" style="padding: 0.25rem 0.5rem; font-size: 0.775rem;" onchange="renderWaveformChart()">
+                <option value="ALL">Display All 12 Leads</option>
+                <option value="LIMB">Limb Leads (I, II, III, aVR, aVL, aVF)</option>
+                <option value="PRECORDIAL">Precordial Leads (V1, V2, V3, V4, V5, V6)</option>
+                <option value="LEAD_II">Rhythm Lead II</option>
+                <option value="V2">STEMI Culprit V2</option>
+                <option value="V3">STEMI Culprit V3</option>
+              </select>
+              <a id="btn-download-ecg-file" href="#" target="_blank" class="btn btn-outline btn-sm">📥 Raw File</a>
+            </div>
+          </div>
+          <div style="height: 220px; background: #FFFFFF; border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 0.75rem;">
+            <canvas id="chart-ecg-waveform"></canvas>
+          </div>
+        </div>
+
+        <!-- 5 PTB-XL Superclass Score Bars -->
+        <div id="analysis-scores-section" style="background: #F8FAFC; border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 1.25rem; margin-bottom: 1.25rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <div>
+              <h4 style="margin: 0; font-size: 0.95rem; color: var(--color-primary-dark);">ResNet-1D Experimental Decision-Support Scores</h4>
+              <span style="font-size: 0.75rem; color: var(--color-text-muted);">Model: <span id="analysis-model-ver">v1.0.0-ptbxl</span> &bull; 0.00 to 1.00 Uncalibrated Scale</span>
+            </div>
+            <button class="btn btn-outline btn-sm" id="btn-rerun-inference" onclick="rerunCurrentAnalysis()">🔄 Re-run Analysis</button>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 0.85rem;" id="analysis-score-bars">
+            <!-- Score Bars rendered by JS -->
+          </div>
+
+          <!-- Plain-language definitions -->
+          <div style="margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid var(--color-border); font-size: 0.75rem; color: var(--color-text-muted); display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5rem;">
+            <div><strong>• NORM:</strong> Baseline normal conduction rhythm.</div>
+            <div><strong>• MI:</strong> Myocardial infarction / acute ischemic pattern.</div>
+            <div><strong>• STTC:</strong> ST-segment & T-wave repolarization abnormalities.</div>
+            <div><strong>• CD:</strong> Conduction disturbance (bundle branch/AV block).</div>
+            <div><strong>• HYP:</strong> Ventricular or atrial hypertrophy indicators.</div>
+          </div>
+        </div>
+
+        <!-- Standing Clinical Disclaimer -->
+        <div style="background: #FEF2F2; border-left: 4px solid #EF4444; padding: 0.75rem 1rem; border-radius: var(--radius-sm); font-size: 0.775rem; color: #991B1B;">
+          <strong>⚠️ MANDATORY CLINICAL DISCLAIMER:</strong> Research and clinical decision-support prototype ONLY. NOT a validated diagnostic product. Output scores are experimental indicators, NOT confirmed diagnoses. Attending physician owns 100% of all clinical diagnoses, triage escalations, and therapeutic orders.
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeEcgAnalysisModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 3C: Historical Side-by-Side Comparison Modal -->
+  <div class="modal-backdrop" id="modal-ecg-compare">
+    <div class="modal-dialog" style="max-width: 960px;">
+      <div class="modal-header" style="background: linear-gradient(90deg, #123B4A 0%, #0F172A 100%); color: #FFFFFF;">
+        <div>
+          <h3 style="color: #FFFFFF; margin: 0; font-size: 1.25rem;">⚖️ Clinical ECG Longitudinal Comparison</h3>
+          <p style="color: #94A3B8; font-size: 0.8rem; margin: 0.25rem 0 0 0;">Evaluating comparative trajectory between two recordings for patient <span id="compare-patient-code" style="color: #FFFFFF; font-weight: 700;">--</span></p>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="closeEcgCompareModal()" style="color: #FFFFFF; border-color: rgba(255,255,255,0.3);">✕</button>
+      </div>
+      <div class="modal-body" style="padding: 1.25rem 1.5rem;">
+        <!-- Incompatibility Alert if applicable -->
+        <div id="compare-incompatible-alert" style="display: none; background: #FEF3C7; border-left: 4px solid #D97706; padding: 1rem; border-radius: var(--radius-sm); margin-bottom: 1.25rem; color: #92400E;">
+          <h4 style="margin: 0 0 0.35rem 0; font-size: 0.95rem;">⚠️ Recordings Are Not Clinically Comparable</h4>
+          <p id="compare-incompatible-reason" style="font-size: 0.825rem; margin: 0;"></p>
+        </div>
+
+        <!-- Side-by-side cards -->
+        <div class="grid grid-cols-2" style="gap: 1.25rem; margin-bottom: 1.25rem;">
+          <!-- Report A -->
+          <div class="card" style="padding: 1.25rem; background: #F8FAFC;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+              <span class="badge" style="background: var(--color-primary-dark); color: #FFFFFF;">REPORT A (Baseline)</span>
+              <span id="comp-date-a" style="font-size: 0.8rem; font-weight: 600;">--</span>
+            </div>
+            <div style="font-size: 0.825rem; margin-bottom: 0.5rem;"><strong>File:</strong> <span id="comp-file-a">--</span></div>
+            <div style="font-size: 0.825rem; margin-bottom: 0.5rem;"><strong>Format:</strong> <span id="comp-format-a">--</span></div>
+            <div id="comp-scores-a" style="margin-top: 0.75rem; display: flex; flex-direction: column; gap: 0.35rem; font-size: 0.8rem;"></div>
+            <div id="comp-review-a" style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--color-border); font-size: 0.8rem;"></div>
+          </div>
+
+          <!-- Report B -->
+          <div class="card" style="padding: 1.25rem; background: #F8FAFC;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+              <span class="badge" style="background: var(--color-teal); color: #FFFFFF;">REPORT B (Follow-up)</span>
+              <span id="comp-date-b" style="font-size: 0.8rem; font-weight: 600;">--</span>
+            </div>
+            <div style="font-size: 0.825rem; margin-bottom: 0.5rem;"><strong>File:</strong> <span id="comp-file-b">--</span></div>
+            <div style="font-size: 0.825rem; margin-bottom: 0.5rem;"><strong>Format:</strong> <span id="comp-format-b">--</span></div>
+            <div id="comp-scores-b" style="margin-top: 0.75rem; display: flex; flex-direction: column; gap: 0.35rem; font-size: 0.8rem;"></div>
+            <div id="comp-review-b" style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--color-border); font-size: 0.8rem;"></div>
+          </div>
+        </div>
+
+        <!-- Comparative Deltas Table (if comparable) -->
+        <div id="compare-deltas-container" style="display: none; background: #FFFFFF; border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 1rem; margin-bottom: 1.25rem;">
+          <h4 style="margin: 0 0 0.75rem 0; font-size: 0.9rem;">Model Score Trajectory Delta</h4>
+          <table class="table" style="font-size: 0.825rem;">
+            <thead>
+              <tr>
+                <th>Diagnostic Class</th>
+                <th>Baseline (Report A)</th>
+                <th>Follow-up (Report B)</th>
+                <th>Score Delta</th>
+                <th>Clinical Trajectory</th>
+              </tr>
+            </thead>
+            <tbody id="compare-deltas-tbody"></tbody>
+          </table>
+        </div>
+
+        <div style="font-size: 0.75rem; color: var(--color-text-muted); text-align: center;">
+          Comparative delta represents experimental model score variation between recordings. Attending cardiologist retains 100% ownership of clinical progression assessment.
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeEcgCompareModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 4: Doctor Reviews & Diagnosis Sign-off (Cardiologist/Admin only) -->
+  <div class="modal-backdrop" id="modal-doctor-reviews">
+    <div class="modal-dialog" style="max-width: 700px;">
+      <div class="modal-header" style="background-color: #F0FDF4; border-bottom: 1px solid #BBF7D0;">
+        <h3 style="color: #166534; display: flex; align-items: center; gap: 0.5rem;">
+          🩺 Physician Doctor Reviews & Clinical Sign-Off
+        </h3>
+        <button class="btn btn-outline btn-sm" onclick="document.getElementById('modal-doctor-reviews').classList.remove('show')">✕</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 0.85rem; margin-bottom: 1rem;">
+          Physician ownership zone: Cardiologists certify findings, record formal diagnosis, and select model agreement level.
+        </p>
+
+        <!-- Existing Reviews List -->
+        <div style="margin-bottom: 1.25rem;">
+          <h4 style="font-size: 0.9rem; margin-bottom: 0.5rem;">Recent Certified Doctor Reviews</h4>
+          <div id="doctor-reviews-list" style="max-height: 160px; overflow-y: auto; border: 1px solid var(--color-border); border-radius: var(--radius-sm); padding: 0.75rem; background: #F8FAFC; font-size: 0.85rem;">
+            Loading reviews...
+          </div>
+        </div>
+
+        <!-- Submit New Review Form -->
+        <h4 style="font-size: 0.9rem; margin-bottom: 0.75rem;">Submit New Certified Clinical Review</h4>
+        <form id="form-new-review" onsubmit="submitDoctorReviewFromModal(event)">
+          <div class="grid grid-cols-2" style="margin-bottom: 0.75rem;">
+            <div>
+              <label class="form-label" style="font-size: 0.8rem;">Patient Code</label>
+              <select id="review-patient-code" class="form-control" style="padding: 0.5rem; font-size: 0.85rem;">
+                <option value="">Select Patient...</option>
+              </select>
+            </div>
+            <div>
+              <label class="form-label" style="font-size: 0.8rem;">Agreement with Experimental AI Model</label>
+              <select id="review-agreement" class="form-control" style="padding: 0.5rem; font-size: 0.85rem;" required>
+                <option value="agreed">Agreed with Model</option>
+                <option value="partially_agreed">Partially Agreed</option>
+                <option value="disagreed">Disagreed with Model</option>
+                <option value="inconclusive">Inconclusive</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 0.75rem;">
+            <label class="form-label" style="font-size: 0.8rem;">Clinical Waveform Findings</label>
+            <input type="text" id="review-findings" class="form-control" placeholder="e.g. ST elevations V2-V4, Q-waves in lead III" required style="padding: 0.5rem; font-size: 0.85rem;">
+          </div>
+
+          <div class="form-group" style="margin-bottom: 0.75rem;">
+            <label class="form-label" style="font-size: 0.8rem;">Confirmed Clinical Diagnosis</label>
+            <input type="text" id="review-diagnosis" class="form-control" placeholder="e.g. Acute Anterior Wall STEMI, post-PCI" required style="padding: 0.5rem; font-size: 0.85rem;">
+          </div>
+
+          <div class="form-group" style="margin-bottom: 0.75rem;">
+            <label class="form-label" style="font-size: 0.8rem;">Physician Treatment Recommendation</label>
+            <input type="text" id="review-recommendation" class="form-control" placeholder="e.g. Dual antiplatelet therapy, CCU continuous telemetry" required style="padding: 0.5rem; font-size: 0.85rem;">
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem;">
+            <input type="checkbox" id="review-urgent-toggle" style="width: 16px; height: 16px;">
+            <label for="review-urgent-toggle" style="font-size: 0.85rem; font-weight: 600; color: #DC2626; cursor: pointer;">
+              Flag as STAT Urgent Escalation
+            </label>
+          </div>
+
+          <div class="modal-footer" style="padding-right: 0; padding-left: 0; margin-bottom: -0.5rem;">
+            <button type="button" class="btn btn-outline" onclick="document.getElementById('modal-doctor-reviews').classList.remove('show')">Cancel</button>
+            <button type="submit" class="btn btn-primary" id="btn-submit-review">
+              ✍️ Sign & Register Doctor Review
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 5: System Audit Trail (Admin only) -->
+  <div class="modal-backdrop" id="modal-audit-trail">
+    <div class="modal-dialog" style="max-width: 800px;">
+      <div class="modal-header" style="background-color: #EDE9FE; border-bottom: 1px solid #DDD6FE;">
+        <h3 style="color: #5B21B6; display: flex; align-items: center; gap: 0.5rem;">
+          🛡️ Clinical Compliance & Security Audit Trail
+        </h3>
+        <button class="btn btn-outline btn-sm" onclick="document.getElementById('modal-audit-trail').classList.remove('show')">✕</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 0.85rem; margin-bottom: 1rem;">
+          Immutable HIPAA/clinical audit records for all authentication, patient access, triage evaluations, and review submissions.
+        </p>
+
+        <div class="table-responsive" style="max-height: 350px; overflow-y: auto;">
+          <table class="table" style="font-size: 0.8rem;">
+            <thead>
+              <tr>
+                <th>Timestamp (UTC)</th>
+                <th>Action</th>
+                <th>Entity</th>
+                <th>Role</th>
+                <th>IP Address</th>
+              </tr>
+            </thead>
+            <tbody id="audit-table-body">
+              <tr><td colspan="5" style="text-align: center; padding: 2rem;">Loading audit records...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="document.getElementById('modal-audit-trail').classList.remove('show')">Close</button>
+        <button class="btn btn-teal btn-sm" onclick="fetchAuditLogs()">🔄 Refresh Audit Trail</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL 6: STEP-WISE PATIENT REGISTRATION (Phase 2 Requirement)         -->
+  <!-- ===================================================================== -->
+  <div class="modal-backdrop" id="modal-register-patient">
+    <div class="modal-dialog" style="max-width: 720px;">
+      <div class="modal-header">
+        <h3>📋 Register New Cardiac Patient</h3>
+        <button class="btn btn-outline btn-sm" onclick="closeRegisterPatientModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <!-- Stepper Indicators -->
+        <div class="stepper-header">
+          <div class="step-indicator active" id="step-ind-1">
+            <span class="step-num">1</span> <span>Demographics</span>
+          </div>
+          <div class="step-indicator" id="step-ind-2">
+            <span class="step-num">2</span> <span>Admission</span>
+          </div>
+          <div class="step-indicator" id="step-ind-3">
+            <span class="step-num">3</span> <span>Stents & History</span>
+          </div>
+          <div class="step-indicator" id="step-ind-4">
+            <span class="step-num">4</span> <span>Medications</span>
+          </div>
+        </div>
+
+        <form id="form-register-patient" onsubmit="submitRegisterPatient(event)">
+          <!-- Step 1: Demographics -->
+          <div class="reg-step-pane" id="reg-step-1">
+            <div class="grid grid-cols-2" style="margin-bottom: 0.75rem;">
+              <div class="form-group">
+                <label class="form-label">First Name *</label>
+                <input type="text" id="reg-first-name" class="form-control" placeholder="e.g. John" required>
+                <div class="form-help text-error" id="err-first-name"></div>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Last Name *</label>
+                <input type="text" id="reg-last-name" class="form-control" placeholder="e.g. Smith" required>
+                <div class="form-help text-error" id="err-last-name"></div>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-3" style="margin-bottom: 0.75rem;">
+              <div class="form-group">
+                <label class="form-label">Date of Birth *</label>
+                <input type="date" id="reg-dob" class="form-control" max="2026-11-13" required>
+                <div class="form-help text-error" id="err-dob"></div>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Biological Gender *</label>
+                <select id="reg-gender" class="form-control" required>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Blood Group</label>
+                <select id="reg-blood-group" class="form-control">
+                  <option value="A+">A+</option>
+                  <option value="A-">A-</option>
+                  <option value="B+">B+</option>
+                  <option value="B-">B-</option>
+                  <option value="AB+">AB+</option>
+                  <option value="AB-">AB-</option>
+                  <option value="O+">O+</option>
+                  <option value="O-">O-</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2">
+              <div class="form-group">
+                <label class="form-label">Contact Phone Number</label>
+                <input type="tel" id="reg-phone" class="form-control" placeholder="+1-555-0199">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Emergency Contact Name & Phone</label>
+                <input type="text" id="reg-emergency" class="form-control" placeholder="e.g. Mary Smith (+1-555-0198)">
+              </div>
+            </div>
+
+            <div style="text-align: right; margin-top: 1rem;">
+              <button type="button" class="btn btn-teal" onclick="goToRegStep(2)">Next: Hospital Admission →</button>
+            </div>
+          </div>
+
+          <!-- Step 2: Admission & Urgency -->
+          <div class="reg-step-pane" id="reg-step-2" style="display: none;">
+            <div class="grid grid-cols-2" style="margin-bottom: 0.75rem;">
+              <div class="form-group">
+                <label class="form-label">Assigned Room / Bed *</label>
+                <input type="text" id="reg-room" class="form-control" placeholder="e.g. CCU Bed 5" required>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Clinical Admission Urgency *</label>
+                <select id="reg-urgency" class="form-control" required>
+                  <option value="routine">Routine Observation</option>
+                  <option value="urgent" selected>Urgent Review Required</option>
+                  <option value="stat_emergency">STAT Emergency (Code Protocol)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Primary Attending Cardiologist</label>
+              <select id="reg-cardiologist" class="form-control">
+                <option value="33333333-3333-3333-3333-333333333331">Dr. Alexander Hayes, FACC (Interventional)</option>
+                <option value="33333333-3333-3333-3333-333333333332">Dr. Priya Patel, FESC (Electrophysiology)</option>
+              </select>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; margin-top: 1rem;">
+              <button type="button" class="btn btn-outline" onclick="goToRegStep(1)">← Back</button>
+              <button type="button" class="btn btn-teal" onclick="goToRegStep(3)">Next: Stents & Cardiac History →</button>
+            </div>
+          </div>
+
+          <!-- Step 3: Cardiac History & Stents -->
+          <div class="reg-step-pane" id="reg-step-3" style="display: none;">
+            <div class="form-group">
+              <label class="form-label">Primary Cardiac Condition / Diagnosis *</label>
+              <input type="text" id="reg-condition" class="form-control" placeholder="e.g. Acute Anterior STEMI, LAD Stent" required>
+            </div>
+
+            <div class="grid grid-cols-3" style="margin-bottom: 0.75rem;">
+              <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; font-weight: 600;">
+                <input type="checkbox" id="reg-prior-mi"> Prior Myocardial Infarction
+              </label>
+              <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; font-weight: 600;">
+                <input type="checkbox" id="reg-prior-stent" checked> Coronary Stents Placed
+              </label>
+              <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; font-weight: 600;">
+                <input type="checkbox" id="reg-prior-cabg"> Prior Bypass (CABG)
+              </label>
+            </div>
+
+            <div class="grid grid-cols-3" style="margin-bottom: 0.75rem;">
+              <div class="form-group">
+                <label class="form-label">Angioplasty / PCI Date</label>
+                <input type="date" id="reg-angio-date" class="form-control" max="2026-11-13">
+                <div class="form-help text-error" id="err-angio-date"></div>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Stent Count</label>
+                <input type="number" id="reg-stent-count" class="form-control" min="0" max="8" value="1">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Ejection Fraction (LVEF %)</label>
+                <input type="number" id="reg-ef" class="form-control" min="15" max="80" step="0.5" placeholder="e.g. 45.0">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Stent Anatomical Details & Location</label>
+              <input type="text" id="reg-stent-details" class="form-control" placeholder="e.g. Xience Sierra DES 3.0x18mm placed in Proximal LAD">
+            </div>
+
+            <div style="display: flex; justify-content: space-between; margin-top: 1rem;">
+              <button type="button" class="btn btn-outline" onclick="goToRegStep(2)">← Back</button>
+              <button type="button" class="btn btn-teal" onclick="goToRegStep(4)">Next: Medications & Allergies →</button>
+            </div>
+          </div>
+
+          <!-- Step 4: Medications & Allergies -->
+          <div class="reg-step-pane" id="reg-step-4" style="display: none;">
+            <div class="form-group">
+              <label class="form-label">Current Cardiac Medications (DAPT / Statin)</label>
+              <textarea id="reg-medications" class="form-control" rows="3" placeholder="Aspirin 81mg Daily, Ticagrelor 90mg BID, Atorvastatin 80mg Nightly, Metoprolol 50mg Daily"></textarea>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Known Allergies</label>
+              <input type="text" id="reg-allergies" class="form-control" placeholder="e.g. Penicillin, Iodinated Contrast (or None)">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Initial Clinical Notes</label>
+              <textarea id="reg-notes" class="form-control" rows="2" placeholder="Post-procedure baseline stable. Cardiac monitor telemetry initiated."></textarea>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; margin-top: 1rem;">
+              <button type="button" class="btn btn-outline" onclick="goToRegStep(3)">← Back</button>
+              <button type="submit" class="btn btn-primary" id="btn-submit-registration">
+                ✅ Complete Registration
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL 7: FULL PATIENT PROFILE WITH 7 CLINICAL TABS (Phase 2 Core)     -->
+  <!-- ===================================================================== -->
+  <div class="modal-backdrop" id="modal-patient-profile">
+    <div class="modal-dialog" style="max-width: 900px;">
+      <!-- Profile Header -->
+      <div class="modal-header" style="background: linear-gradient(90deg, #123B4A 0%, #0F172A 100%); color: #FFFFFF;">
+        <div>
+          <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <h2 id="prof-patient-name" style="color: #FFFFFF; font-size: 1.35rem; margin: 0;">Patient Profile</h2>
+            <span id="prof-patient-code" class="badge" style="background: var(--color-teal); color: #FFFFFF;">MG-XXXX</span>
+            <span id="prof-patient-urgency" class="badge badge-urgent">URGENCY</span>
+          </div>
+          <div style="font-size: 0.8rem; color: #94A3B8; margin-top: 0.25rem;">
+            <span id="prof-demographics">DOB: -- &bull; Male</span> &bull; Location: <strong id="prof-room" style="color: #FFFFFF;">CCU</strong> &bull; Attending: <span id="prof-cardiologist" style="color: #CCFBF1;">Dr. Hayes</span>
+          </div>
+        </div>
+        <div style="display: flex; gap: 0.5rem;">
+          <button class="btn btn-outline btn-sm" id="btn-edit-patient-trigger" onclick="openEditPatientModalFromProfile()" style="color: #FFFFFF; border-color: rgba(255,255,255,0.3);">
+            ✏️ Edit
+          </button>
+          <button class="btn btn-outline btn-sm" id="btn-archive-patient-trigger" onclick="archiveCurrentPatient()" style="color: #FCA5A5; border-color: rgba(252,165,165,0.4);">
+            📦 Archive
+          </button>
+          <button class="btn btn-outline btn-sm" onclick="closePatientProfileModal()" style="color: #FFFFFF; border-color: rgba(255,255,255,0.3);">✕</button>
+        </div>
+      </div>
+
+      <div class="modal-body" style="padding: 1.25rem 1.5rem;">
+        <!-- 7 Clinical Tabs Navigation -->
+        <div class="tabs-nav">
+          <button class="tab-btn active" onclick="switchProfileTab('overview')">📋 Overview</button>
+          <button class="tab-btn" onclick="switchProfileTab('cardiac-history')">❤️ Cardiac History</button>
+          <button class="tab-btn" onclick="switchProfileTab('stents')">🩺 Angioplasty & Stents</button>
+          <button class="tab-btn" onclick="switchProfileTab('ecg-reports')">📈 ECG Reports</button>
+          <button class="tab-btn" onclick="switchProfileTab('trends')">📊 Trends</button>
+          <button class="tab-btn" onclick="switchProfileTab('doctor-comments')">💬 Doctor Comments</button>
+          <button class="tab-btn" onclick="switchProfileTab('followups')">📅 Follow-ups</button>
+        </div>
+
+        <!-- Tab 1: Overview -->
+        <div class="tab-pane active" id="tab-overview">
+          <div class="grid grid-cols-3" style="margin-bottom: 1.25rem;">
+            <div class="card" style="padding: 1rem;">
+              <small>PRIMARY DIAGNOSIS</small>
+              <div id="prof-overview-condition" style="font-weight: 700; color: var(--color-primary-dark); font-size: 0.95rem; margin-top: 0.25rem;">--</div>
+            </div>
+            <div class="card" style="padding: 1rem;">
+              <small>EJECTION FRACTION</small>
+              <div id="prof-overview-ef" style="font-weight: 700; color: var(--color-teal-dark); font-size: 1.25rem; margin-top: 0.25rem;">-- %</div>
+            </div>
+            <div class="card" style="padding: 1rem;">
+              <small>BLOOD GROUP & VITAL STATUS</small>
+              <div id="prof-overview-blood" style="font-weight: 700; font-size: 0.95rem; margin-top: 0.25rem;">--</div>
+            </div>
+          </div>
+
+          <div style="background: #F8FAFC; border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 1rem; margin-bottom: 1rem;">
+            <h4 style="font-size: 0.9rem; margin-bottom: 0.5rem;">Contact & Emergency Kin</h4>
+            <div style="font-size: 0.85rem;">
+              <div><strong>Primary Phone:</strong> <span id="prof-overview-phone">--</span></div>
+              <div style="margin-top: 0.25rem;"><strong>Emergency Contact:</strong> <span id="prof-overview-kin">--</span></div>
+              <div style="margin-top: 0.25rem;"><strong>Admission Timestamp:</strong> <span id="prof-overview-admission">--</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 2: Cardiac History -->
+        <div class="tab-pane" id="tab-cardiac-history">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+            <h4 style="margin: 0; font-size: 0.95rem;">Longitudinal Cardiac History Timeline</h4>
+            <button class="btn btn-teal btn-sm" onclick="promptAddCardiacHistory()">➕ Add Cardiac Event</button>
+          </div>
+          <div id="prof-cardiac-history-timeline" style="display: flex; flex-direction: column; gap: 0.75rem;">
+            <!-- Rendered via JS -->
+          </div>
+        </div>
+
+        <!-- Tab 3: Angioplasty & Stents -->
+        <div class="tab-pane" id="tab-stents">
+          <h4 style="font-size: 0.95rem; margin-bottom: 0.75rem;">Angioplasty & Coronary Stent Registry</h4>
+          <div class="table-responsive">
+            <table class="table" style="font-size: 0.85rem;">
+              <thead>
+                <tr>
+                  <th>Procedure Date</th>
+                  <th>Stent Type</th>
+                  <th>Anatomical Location</th>
+                  <th>Count</th>
+                  <th>Procedural Details</th>
+                </tr>
+              </thead>
+              <tbody id="prof-stents-table-body">
+                <!-- Rendered via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Tab 4: ECG Reports (Phase 4 Wireframe Placeholder) -->
+        <div class="tab-pane" id="tab-ecg-reports">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+            <h4 style="margin: 0; font-size: 0.95rem;">Digital 12-Lead ECG Records (Phase 4 Integration)</h4>
+            <button class="btn btn-teal btn-sm" onclick="showEcgModal()">Ingest New Waveform</button>
+          </div>
+          <div id="prof-ecg-reports-list">
+            <!-- Rendered via JS -->
+          </div>
+        </div>
+
+        <!-- Tab 5: Trends -->
+        <div class="tab-pane" id="tab-trends">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+            <h4 style="margin: 0; font-size: 0.95rem;">Longitudinal PTB-XL Model Score Trajectory (Digital 12-Lead)</h4>
+            <span style="font-size: 0.75rem; color: var(--color-text-muted);">Uncalibrated experimental scores over time</span>
+          </div>
+          <div style="height: 240px; background: #FFFFFF; border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 0.75rem; margin-bottom: 1rem;">
+            <canvas id="chart-patient-trends"></canvas>
+          </div>
+          <div class="grid grid-cols-2">
+            <div class="card" style="padding: 1rem;">
+              <small>EJECTION FRACTION RECOVERY (LVEF %)</small>
+              <div style="height: 80px; display: flex; align-items: center; justify-content: center; background: #F8FAFC; border-radius: var(--radius-sm); margin-top: 0.5rem; color: var(--color-teal); font-weight: 700;">
+                📈 Baseline 38% ➔ Post-PCI 48% Stable
+              </div>
+            </div>
+            <div class="card" style="padding: 1rem;">
+              <small>CONTINUOUS TELEMETRY RHYTHM PROFILE</small>
+              <div style="height: 80px; display: flex; align-items: center; justify-content: center; background: #F8FAFC; border-radius: var(--radius-sm); margin-top: 0.5rem; color: var(--color-success); font-weight: 700;">
+                🟢 Sinus Rhythm (HR 72-84 bpm) No Run of VT
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 6: Doctor Comments -->
+        <div class="tab-pane" id="tab-doctor-comments">
+          <h4 style="font-size: 0.95rem; margin-bottom: 0.75rem;">Attending Cardiologist Certified Notes</h4>
+          <div id="prof-doctor-comments-body" style="background: #F8FAFC; border-left: 4px solid var(--color-teal); padding: 1rem; border-radius: var(--radius-sm); font-size: 0.875rem;">
+            <!-- Rendered via JS -->
+          </div>
+        </div>
+
+        <!-- Tab 7: Follow-ups -->
+        <div class="tab-pane" id="tab-followups">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+            <h4 style="margin: 0; font-size: 0.95rem;">Post-Procedure Follow-Up Schedule</h4>
+            <button class="btn btn-teal btn-sm" onclick="promptAddFollowUp()">📅 Schedule Follow-Up</button>
+          </div>
+          <div class="table-responsive">
+            <table class="table" style="font-size: 0.85rem;">
+              <thead>
+                <tr>
+                  <th>Scheduled Date</th>
+                  <th>Follow-Up Type</th>
+                  <th>Status</th>
+                  <th>Notes / Outcome</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="prof-followups-table-body">
+                <!-- Rendered via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closePatientProfileModal()">Close Profile</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 8: Edit Patient Demographics -->
+  <div class="modal-backdrop" id="modal-edit-patient">
+    <div class="modal-dialog" style="max-width: 550px;">
+      <div class="modal-header">
+        <h3>✏️ Edit Patient Demographics</h3>
+        <button class="btn btn-outline btn-sm" onclick="document.getElementById('modal-edit-patient').classList.remove('show')">✕</button>
+      </div>
+      <div class="modal-body">
+        <form id="form-edit-patient" onsubmit="submitEditPatient(event)">
+          <div class="grid grid-cols-2" style="margin-bottom: 0.75rem;">
+            <div class="form-group">
+              <label class="form-label">First Name *</label>
+              <input type="text" id="edit-first-name" class="form-control" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Last Name *</label>
+              <input type="text" id="edit-last-name" class="form-control" required>
+            </div>
+          </div>
+          <div class="grid grid-cols-2" style="margin-bottom: 0.75rem;">
+            <div class="form-group">
+              <label class="form-label">Room / Bed *</label>
+              <input type="text" id="edit-room" class="form-control" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Urgency</label>
+              <select id="edit-urgency" class="form-control">
+                <option value="routine">Routine</option>
+                <option value="urgent">Urgent</option>
+                <option value="stat_emergency">Stat Emergency</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Contact Phone</label>
+            <input type="tel" id="edit-phone" class="form-control">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Emergency Contact</label>
+            <input type="text" id="edit-emergency" class="form-control">
+          </div>
+          <div class="modal-footer" style="padding-left: 0; padding-right: 0; margin-bottom: -0.5rem;">
+            <button type="button" class="btn btn-outline" onclick="document.getElementById('modal-edit-patient').classList.remove('show')">Cancel</button>
+            <button type="submit" class="btn btn-teal">Save Updates</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 9: About MediGuard AI & Clinical Research Limitations -->
+  <div class="modal-backdrop" id="modal-about-limitations">
+    <div class="modal-dialog" style="max-width: 680px;">
+      <div class="modal-header">
+        <h3 style="display: flex; align-items: center; gap: 0.5rem; color: var(--color-primary-dark);">
+          ℹ️ MediGuard AI – Clinical Architecture & Regulatory Disclaimers
+        </h3>
+        <button class="btn btn-outline btn-sm" onclick="closeAboutModal()">✕</button>
+      </div>
+      <div class="modal-body" style="font-size: 0.875rem; line-height: 1.6;">
+        <div style="background: #FEF2F2; border-left: 4px solid #EF4444; padding: 1rem; border-radius: var(--radius-sm); margin-bottom: 1.25rem;">
+          <h4 style="color: #991B1B; margin-bottom: 0.25rem;">⚠️ Non-Negotiable Research Prototype Notice</h4>
+          <p style="color: #7F1D1D; margin: 0;">
+            MediGuard AI is an <strong>experimental research and clinical decision-support prototype</strong>. It is <strong>NOT</strong> an FDA/CE-cleared or clinically validated diagnostic product. It must <strong>never</strong> be used as an autonomous diagnostic device on human patients without regulatory clearance.
+          </p>
+        </div>
+
+        <h4 style="color: var(--color-primary-dark); margin-bottom: 0.5rem;">Core Design & Ethical Directives</h4>
+        <ul style="padding-left: 1.25rem; margin-bottom: 1rem;">
+          <li><strong>Physician Ownership (Doctors Own 100%):</strong> Every diagnosis, treatment order, catheterization decision, and discharge is the sole responsibility of licensed cardiologists. AI predictions are supplementary experimental signals.</li>
+          <li><strong>Uncalibrated Model Scores:</strong> Output scores are raw continuous sigmoid activations ($0.00$ to $1.00$) trained on the PTB-XL database. They are experimental indications, not calibrated statistical probabilities of heart attacks.</li>
+          <li><strong>Separate Image/PDF vs Waveform Pipelines (Rule 4):</strong> Scanned images and clinical PDFs follow strict non-ML document archival pipelines. We never fabricate model scores or use unvalidated OCR for diagnostic interpretation.</li>
+          <li><strong>Zero Patient Data Exfiltration (Rule 5):</strong> Operates strictly on synthetic cardiology profiles in a private hospital-hosted environment. Patient data is never dispatched to external public AI cloud APIs.</li>
+          <li><strong>Emergency Protocol Priority (Rule 9):</strong> Acute coronary symptoms (STEMI, syncope, shock) trigger immediate hospital emergency hotlines (Ext. 2222 / 4400) and must never wait for background AI processing.</li>
+        </ul>
+
+        <div style="background: #F1F5F9; border: 1px solid var(--color-border); padding: 1rem; border-radius: var(--radius-sm);">
+          <strong style="color: var(--color-primary-dark);">Model Technical Specification:</strong>
+          <div style="font-size: 0.8rem; color: var(--color-text-muted); margin-top: 0.25rem;">
+            Architecture: ResNet-1D (12-Lead Temporal Convolutions) &bull; Checkpoint: PTB-XL Benchmark &bull; Classes: NORM, MI, STTC, CD, HYP &bull; Signal Sampling: 100/500 Hz standard digital waveforms.
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-teal" onclick="closeAboutModal()">I Understand & Acknowledge</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 10: Cardiologist Structured Review Workspace -->
+  <div class="modal-backdrop" id="modal-review-workspace">
+    <div class="modal-dialog" style="max-width: 900px;">
+      <div class="modal-header" style="background: #0F172A; color: #FFFFFF;">
+        <div>
+          <h3 style="color: #FFFFFF; display: flex; align-items: center; gap: 0.5rem;">
+            🩺 Cardiologist Review Workspace & Decision Documentation
+          </h3>
+          <p style="color: #94A3B8; font-size: 0.775rem; margin: 0;">Verified Physician Sign-off &bull; Append-Only Audit History</p>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="closeReviewWorkspace()" style="color: #FFF; border-color: #475569;">✕</button>
+      </div>
+      <div class="modal-body">
+        <!-- Patient Summary Card -->
+        <div id="rw-patient-summary" style="background: #F8FAFC; border: 1px solid var(--color-border); padding: 0.75rem 1rem; border-radius: var(--radius-sm); margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+          <div>
+            <strong id="rw-patient-code" style="color: var(--color-primary-dark); font-size: 1rem;">MG-2026-000101</strong> &nbsp;
+            <span id="rw-patient-name" style="font-weight: 600;">James Harrison</span> &bull;
+            <span id="rw-patient-room">CCU Bed 4</span>
+          </div>
+          <div id="rw-patient-stents" style="font-size: 0.8rem; color: #64748B;">
+            Stents: 2 (Everolimus DES in LAD) &bull; EF: 42%
+          </div>
+        </div>
+
+        <!-- Waveform / File Preview Container -->
+        <div style="background: #FFFFFF; border: 1px solid var(--color-border); border-radius: var(--radius-sm); padding: 0.75rem; margin-bottom: 1rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+            <strong style="font-size: 0.85rem;">📈 12-Lead Waveform / Document Viewer</strong>
+            <span id="rw-pipeline-badge" class="badge badge-teal">DIGITAL 12-LEAD</span>
+          </div>
+          <div style="height: 180px; position: relative;">
+            <canvas id="rw-ecg-canvas"></canvas>
+            <div id="rw-non-ml-view" style="display: none; height: 100%; display: flex; align-items: center; justify-content: center; background: #F8FAFC; text-align: center; color: #64748B; font-size: 0.85rem;">
+              Clinical Document / Scanned Image &bull; Direct Physician Inspection Mode
+            </div>
+          </div>
+        </div>
+
+        <!-- Model Findings (Decision Support Only) -->
+        <div style="background: #F0FDFA; border: 1px solid #CCFBF1; padding: 0.75rem 1rem; border-radius: var(--radius-sm); margin-bottom: 1rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+            <strong style="font-size: 0.825rem; color: #0F766E;">🤖 Experimental Decision Support Model Scores (Uncalibrated)</strong>
+            <span class="badge" style="background: #CCFBF1; color: #0F766E; font-size: 0.7rem;">RESEARCH DEMO ONLY</span>
+          </div>
+          <div id="rw-model-scores" style="display: flex; gap: 0.75rem; font-size: 0.8rem; flex-wrap: wrap;">
+            <span>NORM: <strong id="rw-score-norm">--</strong></span>
+            <span>MI: <strong id="rw-score-mi">--</strong></span>
+            <span>STTC: <strong id="rw-score-sttc">--</strong></span>
+            <span>CD: <strong id="rw-score-cd">--</strong></span>
+            <span>HYP: <strong id="rw-score-hyp">--</strong></span>
+          </div>
+        </div>
+
+        <!-- Structured Physician Interpretation Form -->
+        <form id="form-doctor-review" onsubmit="submitDoctorReview(event)">
+          <input type="hidden" id="rw-report-id">
+          
+          <div class="grid grid-cols-3" style="gap: 0.75rem; margin-bottom: 0.75rem;">
+            <div class="form-group">
+              <label class="form-label" style="font-size: 0.8rem; font-weight: 700;">1. Heart Rhythm *</label>
+              <select id="rw-rhythm" class="form-control" style="font-size: 0.825rem;" required>
+                <option value="Normal Sinus Rhythm">Normal Sinus Rhythm</option>
+                <option value="Sinus Bradycardia">Sinus Bradycardia</option>
+                <option value="Sinus Tachycardia">Sinus Tachycardia</option>
+                <option value="Atrial Fibrillation">Atrial Fibrillation</option>
+                <option value="Atrial Flutter">Atrial Flutter</option>
+                <option value="Ventricular Tachycardia">Ventricular Tachycardia (STAT)</option>
+                <option value="Junctional Rhythm">Junctional Rhythm</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" style="font-size: 0.8rem; font-weight: 700;">2. ST/T Wave Findings *</label>
+              <select id="rw-st-t" class="form-control" style="font-size: 0.825rem;" required>
+                <option value="Normal ST/T">Normal ST/T</option>
+                <option value="ST Elevation (V2-V4 Anteroseptal)">ST Elevation (V2-V4 Anteroseptal)</option>
+                <option value="ST Elevation (II, III, aVF Inferior)">ST Elevation (II, III, aVF Inferior)</option>
+                <option value="ST Depression (Subendocardial Ischemia)">ST Depression (Subendocardial Ischemia)</option>
+                <option value="T-Wave Inversion">T-Wave Inversion</option>
+                <option value="Non-Specific ST/T Changes">Non-Specific ST/T Changes</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" style="font-size: 0.8rem; font-weight: 700;">3. Conduction System *</label>
+              <select id="rw-conduction" class="form-control" style="font-size: 0.825rem;" required>
+                <option value="Normal AV Conduction">Normal AV Conduction</option>
+                <option value="Left Bundle Branch Block (LBBB)">Left Bundle Branch Block (LBBB)</option>
+                <option value="Right Bundle Branch Block (RBBB)">Right Bundle Branch Block (RBBB)</option>
+                <option value="1st Degree AV Block">1st Degree AV Block</option>
+                <option value="Complete Heart Block (3rd Degree)">Complete Heart Block (3rd Degree)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2" style="gap: 0.75rem; margin-bottom: 0.75rem;">
+            <div class="form-group">
+              <label class="form-label" style="font-size: 0.8rem; font-weight: 700;">Clinical Findings & Observations *</label>
+              <textarea id="rw-findings" class="form-control" rows="2" style="font-size: 0.825rem;" required placeholder="Detailed clinical waveform observations..."></textarea>
+            </div>
+            <div class="form-group">
+              <label class="form-label" style="font-size: 0.8rem; font-weight: 700;">Formal Primary Diagnosis *</label>
+              <input type="text" id="rw-diagnosis" class="form-control" style="font-size: 0.825rem;" required placeholder="e.g. Acute Anterior STEMI, Status Post LAD Stent">
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 0.75rem;">
+            <label class="form-label" style="font-size: 0.8rem; font-weight: 700;">Actionable Clinical Recommendation *</label>
+            <textarea id="rw-recommendation" class="form-control" rows="2" style="font-size: 0.825rem;" required placeholder="Management plan, medication adjustments, cath lab referral, or monitoring frequency..."></textarea>
+          </div>
+
+          <div class="grid grid-cols-3" style="gap: 0.75rem; margin-bottom: 0.75rem;">
+            <div class="form-group">
+              <label class="form-label" style="font-size: 0.8rem; font-weight: 700;">Patient Triage Urgency *</label>
+              <select id="rw-urgency" class="form-control" style="font-size: 0.825rem;">
+                <option value="routine">Routine</option>
+                <option value="urgent">Urgent</option>
+                <option value="stat_emergency">STAT Emergency</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" style="font-size: 0.8rem; font-weight: 700;">Agreement with Model *</label>
+              <select id="rw-agreement" class="form-control" style="font-size: 0.825rem;">
+                <option value="agreed">Agreed</option>
+                <option value="partially_agreed">Partially Agreed</option>
+                <option value="disagreed">Disagreed</option>
+                <option value="not_applicable">Not Applicable</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" style="font-size: 0.8rem; font-weight: 700;">Schedule Follow-up Visit</label>
+              <input type="date" id="rw-followup-date" class="form-control" style="font-size: 0.825rem;">
+            </div>
+          </div>
+
+          <!-- Review Version History Section -->
+          <div id="rw-history-section" style="display: none; background: #F8FAFC; border: 1px solid var(--color-border); border-radius: var(--radius-sm); padding: 0.5rem 0.75rem; margin-bottom: 0.75rem;">
+            <strong style="font-size: 0.8rem; color: #475569;">📜 Signed Review History (Append-Only):</strong>
+            <div id="rw-history-list" style="font-size: 0.75rem; color: #64748B; margin-top: 0.25rem;"></div>
+          </div>
+
+          <div class="modal-footer" style="padding-left: 0; padding-right: 0; margin-bottom: -0.5rem; display: flex; justify-content: space-between;">
+            <button type="button" class="btn btn-outline" onclick="saveReviewDraftAction()" id="btn-save-draft">💾 Save Draft</button>
+            <div style="display: flex; gap: 0.5rem;">
+              <button type="button" class="btn btn-outline" onclick="closeReviewWorkspace()">Cancel</button>
+              <button type="submit" class="btn btn-teal" id="btn-submit-review">✍️ Sign & Finalize Review</button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/beatrice_ecg_data.js"></script>
+  <script>
+    // Route guard: must be authenticated
+    if (!Auth.guardRoute()) {
+      // guardRoute redirects to index.html if unauthenticated
+      console.warn("Unauthenticated session detected. Redirecting to login...");
+    }
+
+    const user = Auth.getUser() || {};
+    if (user && user.full_name) {
+      const parts = user.full_name.replace("Dr. ", "").replace("RN ", "").split(" ");
+      const initials = (parts[0][0] + (parts[1] ? parts[1][0] : "")).toUpperCase();
+      const avatarEl = document.getElementById("user-avatar-initials");
+      if (avatarEl) avatarEl.textContent = initials;
+    }
+
+    // Role-aware button visibility
+    if (user && user.role === 'cardiologist') {
+      const regBtn = document.getElementById('btn-register-new-patient');
+      if (regBtn) {
+        regBtn.style.display = 'none'; // Only Staff and Admin register new patients
+      }
+    }
+
+    let currentPatientPage = 1;
+    let totalPatientPages = 1;
+    let selectedPatientId = null;
+    let chartMonthlyInstance = null;
+    let chartWeeklyInstance = null;
+    let chartAgreementInstance = null;
+
+    // =========================================================================
+    // 1. DASHBOARD DATA & AGGREGATES
+    // =========================================================================
+
+    async function loadDashboardStats() {
+      try {
+        const res = await API.get("/api/dashboard/stats");
+        const stats = res.data || {};
+        document.getElementById("stat-patients-total").textContent = stats.total_cardiac_patients ?? "--";
+        document.getElementById("stat-reports-total").textContent = stats.uploaded_ecg_reports ?? "--";
+        document.getElementById("stat-pending-reviews").textContent = stats.pending_doctor_reviews ?? "--";
+        document.getElementById("stat-flagged-urgent").textContent = stats.flagged_clinical_attention ?? "--";
+        document.getElementById("stat-upcoming-followups").textContent = stats.upcoming_follow_ups ?? "0";
+        document.getElementById("stat-overdue-followups").textContent = `${stats.overdue_follow_ups ?? 0} OVERDUE`;
+      } catch (err) {
+        console.error("Error fetching stats:", err);
+      }
+    }
+
+    async function loadPriorityQueue() {
+      const tbody = document.getElementById("priority-queue-body");
+      try {
+        // If clinician is Cardiologist or Admin, fetch Rule-based Prioritised Review Queue
+        if (user && (user.role === 'cardiologist' || user.role === 'admin')) {
+          const revRes = await API.get("/api/reviews/queue").catch(() => null);
+          if (revRes && revRes.data && revRes.data.length > 0) {
+            tbody.innerHTML = revRes.data.slice(0, 10).map(p => {
+              let badgeClass = "badge-routine";
+              if (p.priority === "urgent") badgeClass = "badge-stat";
+              else if (p.priority === "prompt") badgeClass = "badge-urgent";
+
+              const primaryReason = (p.priority_reasons && p.priority_reasons[0]) ? p.priority_reasons[0] : (p.condition_type || '');
+
+              return `
+                <tr>
+                  <td><strong>${p.patient_code}</strong><br><small>${p.patient_name}</small></td>
+                  <td>${p.room_bed || 'CCU'}</td>
+                  <td>
+                    <span class="badge ${badgeClass}">${p.priority.toUpperCase()}</span><br>
+                    <small style="color: #64748B;" title="${p.priority_reasons ? p.priority_reasons.join(' | ') : ''}">
+                      ${primaryReason.length > 38 ? primaryReason.slice(0, 38) + '...' : primaryReason}
+                    </small>
+                  </td>
+                  <td>
+                    <button class="btn btn-teal btn-sm" onclick="openReviewWorkspace('${p.report_id}')" title="Open Cardiologist Structured Review Workspace">Review</button>
+                  </td>
+                </tr>
+              `;
+            }).join("");
+            return;
+          }
+        }
+
+        const res = await API.get("/api/dashboard/priority-queue");
+        const queue = res.data || [];
+        if (queue.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; padding: 1.5rem;">No priority alerts.</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = queue.map(p => {
+          let badgeClass = "badge-routine";
+          if (p.urgency === "stat_emergency") badgeClass = "badge-stat";
+          else if (p.urgency === "urgent") badgeClass = "badge-urgent";
+
+          return `
+            <tr>
+              <td><strong>${p.patient_code}</strong><br><small>${p.first_name} ${p.last_name}</small></td>
+              <td>${p.room_bed || 'CCU'}</td>
+              <td><span class="badge ${badgeClass}">${(p.urgency || 'routine').toUpperCase()}</span><br><small>${p.latest_diagnosis || ''}</small></td>
+              <td>
+                <button class="btn btn-outline btn-sm" onclick="openPatientProfile('${p.id}')">Profile</button>
+              </td>
+            </tr>
+          `;
+        }).join("");
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--color-emergency);">Failed to load priority queue</td></tr>`;
+      }
+    }
+
+    async function loadRecentUploads() {
+      const tbody = document.getElementById("recent-uploads-body");
+      try {
+        const res = await API.get("/api/dashboard/recent-uploads");
+        const reports = res.data || [];
+        if (reports.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 1.5rem;">No recent ECG uploads.</td></tr>`;
+          renderLiveMlFindings(null);
+          return;
+        }
+
+        tbody.innerHTML = reports.map(r => `
+          <tr style="cursor: pointer;" onclick="if (!event.target.closest('button')) openEcgAnalysisModal('${r.id}')">
+            <td><strong>${r.patient_code || 'MG-RECORD'}</strong><br><small>${r.patient_name || ''}</small></td>
+            <td><span class="badge ${r.urgency === 'stat_emergency' ? 'badge-stat' : (r.urgency === 'urgent' ? 'badge-urgent' : 'badge-routine')}">${(r.urgency || 'routine').toUpperCase()}</span></td>
+            <td><span class="badge ${r.status === 'reviewed' ? 'badge-routine' : (r.status === 'analyzed' ? 'badge-routine' : 'badge-urgent')}">${r.status.toUpperCase()}</span></td>
+            <td><small>${new Date(r.recording_time || r.created_at).toLocaleDateString()}</small></td>
+            <td style="text-align: right; white-space: nowrap;">
+              <button class="btn btn-teal btn-sm" onclick="event.stopPropagation(); openEcgAnalysisModal('${r.id}')" title="View 12-lead waveform & model analysis" style="display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.35rem 0.65rem; font-weight: 600;">
+                👁️ View Analysis
+              </button>
+            </td>
+          </tr>
+        `).join("");
+
+        // Find the most recent digital report that has scores or is digital_12lead
+        const scoredReport = reports.find(r => r.scores || (r.file_type === 'digital_12lead')) || reports[0];
+        renderLiveMlFindings(scoredReport);
+
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--color-emergency);">Failed to load uploads</td></tr>`;
+        renderLiveMlFindings(null);
+      }
+    }
+
+    async function renderLiveMlFindings(report) {
+      const container = document.getElementById("live-ml-content");
+      const actions = document.getElementById("live-ml-header-actions");
+      if (!container) return;
+
+      if (!report) {
+        container.innerHTML = `
+          <div style="text-align: center; padding: 2rem; color: var(--color-text-muted);">
+            <p style="margin: 0; font-size: 0.95rem; font-weight: 500;">No recent ECG waveforms found.</p>
+            <small>Click "Ingest Waveform" above to upload or load a sample 12-lead digital ECG.</small>
+          </div>
+        `;
+        if (actions) actions.innerHTML = '';
+        return;
+      }
+
+      let scores = report.scores || (report.analysis && report.analysis.scores);
+      let modelVersion = report.model_version || 'v1.0.0-ptbxl';
+
+      if (!scores && report.file_type === 'digital_12lead') {
+        try {
+          const res = await API.get(`/api/ecg/${report.id}/analysis`);
+          if (res.data && res.data.scores) {
+            scores = res.data.scores;
+            modelVersion = res.data.model_version || modelVersion;
+          }
+        } catch (e) {
+          console.warn("Could not fetch analysis for live card:", e);
+        }
+      }
+
+      if (!scores) {
+        container.innerHTML = `
+          <div style="background: #FFFBEB; border: 1px solid #FDE68A; border-radius: var(--radius-md); padding: 1.25rem; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <strong style="color: #92400E;">${report.patient_code || 'MG-RECORD'} (${report.patient_name || 'Patient'})</strong>
+              <div style="font-size: 0.825rem; color: #B45309; margin-top: 0.25rem;">
+                ${report.file_type === 'digital_12lead' ? 'Waveform analysis in progress or awaiting scoring.' : 'Image/PDF uploaded – routed for direct physician review.'}
+              </div>
+            </div>
+            <button class="btn btn-teal btn-sm" onclick="openEcgAnalysisModal('${report.id}')">👁️ View Record</button>
+          </div>
+        `;
+        if (actions) actions.innerHTML = '';
+        return;
+      }
+
+      const reportId = report.id;
+      const patientCode = report.patient_code || 'MG-RECORD';
+      const patientName = report.patient_name || 'Monitored Patient';
+      const recDate = report.recording_time ? new Date(report.recording_time).toLocaleString() : new Date(report.created_at).toLocaleString();
+
+      if (actions) {
+        actions.innerHTML = `
+          <button class="btn btn-teal btn-sm" onclick="openEcgAnalysisModal('${reportId}')" style="display: inline-flex; align-items: center; gap: 0.35rem; font-weight: 600;">
+            👁️ Open Full Waveform Viewer
+          </button>
+        `;
+      }
+
+      const classes = [
+        { key: 'NORM', label: 'Normal Sinus Rhythm (NORM)', color: '#10B981', desc: 'Baseline electrical cardiac conduction within typical clinical limits.' },
+        { key: 'MI',   label: 'Myocardial Infarction / Ischemia (MI)', color: '#EF4444', desc: 'Ischemia / infarction pattern (ST-elevation, pathologic Q-waves).' },
+        { key: 'STTC', label: 'ST / T-Wave Abnormalities (STTC)', color: '#F59E0B', desc: 'Non-specific repolarization abnormalities or ischemic ST/T alterations.' },
+        { key: 'CD',   label: 'Conduction Disturbance (CD)', color: '#3B82F6', desc: 'Intraventricular or AV block (LBBB, RBBB, bundle fascicular delay).' },
+        { key: 'HYP',  label: 'Ventricular / Atrial Hypertrophy (HYP)', color: '#8B5CF6', desc: 'Voltage or axis criteria suggesting ventricular/atrial enlargement.' }
+      ];
+
+      container.innerHTML = `
+        <div style="background: #F8FAFC; border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 0.85rem 1.25rem; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+          <div>
+            <span style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-text-muted); font-weight: 700;">Analyzed Patient Record</span>
+            <div style="font-size: 1.05rem; font-weight: 700; color: var(--color-primary); margin-top: 0.1rem;">
+              ${patientCode} &bull; ${patientName}
+            </div>
+            <div style="font-size: 0.75rem; color: var(--color-text-muted); margin-top: 0.2rem;">
+              Report ID: <code style="background: #E2E8F0; padding: 0.1rem 0.35rem; border-radius: 3px;">${reportId}</code> &bull; Recorded: ${recDate}
+            </div>
+          </div>
+          <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <span class="badge" style="background: var(--color-teal); color: white; padding: 0.35rem 0.65rem; font-size: 0.75rem;">12-LEAD DIGITAL</span>
+            <span class="badge" style="background: #10B981; color: white; padding: 0.35rem 0.65rem; font-size: 0.75rem;">QUALITY: HIGH</span>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 0.85rem;">
+          ${classes.map(c => {
+            const rawVal = scores[c.key] !== undefined ? scores[c.key] : (scores[c.key.toLowerCase()] !== undefined ? scores[c.key.toLowerCase()] : 0.0);
+            const val = parseFloat(rawVal) || 0.0;
+            const pct = Math.min(Math.max(val * 100, 0), 100).toFixed(1);
+            const isElevated = val >= 0.50;
+            const thresholdBadge = isElevated 
+              ? `<span style="background: #FEE2E2; color: #B91C1C; font-size: 0.675rem; font-weight: 700; padding: 0.15rem 0.4rem; border-radius: 4px; border: 1px solid #FCA5A5;">⚠️ ELEVATED (&ge;0.50)</span>` 
+              : '';
+
+            return `
+              <div style="background: #FFFFFF; border: 1px solid var(--color-border); border-radius: var(--radius-sm); padding: 0.85rem 1rem; box-shadow: 0 1px 2px rgba(0,0,0,0.03);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+                  <div style="display: flex; align-items: center; gap: 0.4rem;">
+                    <span style="display: inline-block; width: 10px; height: 10px; border-radius: 2px; background: ${c.color};"></span>
+                    <strong style="font-size: 0.825rem; color: var(--color-text-main);">${c.label}</strong>
+                  </div>
+                  <div style="display: flex; align-items: baseline; gap: 0.3rem;">
+                    <span style="font-size: 0.95rem; font-family: monospace; font-weight: 800; color: ${isElevated ? '#DC2626' : 'var(--color-text-main)'};">${val.toFixed(3)}</span>
+                    <span style="font-size: 0.725rem; color: var(--color-text-muted);">(${pct}%)</span>
+                  </div>
+                </div>
+                ${thresholdBadge ? `<div style="margin-bottom: 0.35rem;">${thresholdBadge}</div>` : ''}
+                <div style="width: 100%; height: 12px; background: #E2E8F0; border-radius: 6px; overflow: hidden; margin-bottom: 0.4rem;">
+                  <div style="width: ${pct}%; height: 100%; background: ${c.color}; border-radius: 6px; transition: width 0.4s ease;"></div>
+                </div>
+                <div style="font-size: 0.72rem; color: var(--color-text-muted); line-height: 1.3;">
+                  ${c.desc}
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      `;
+    }
+
+    async function loadDashboardCharts() {
+      try {
+        const res = await API.get("/api/dashboard/charts");
+        const charts = res.data || {};
+
+        // 1. Monthly patients bar chart
+        const ctx1 = document.getElementById("chart-monthly-patients").getContext("2d");
+        if (chartMonthlyInstance) chartMonthlyInstance.destroy();
+        chartMonthlyInstance = new Chart(ctx1, {
+          type: "bar",
+          data: {
+            labels: charts.monthly_patients?.labels || ["Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+            datasets: [{
+              label: "New Patients",
+              data: charts.monthly_patients?.data || [3, 4, 6, 8, 12, 15],
+              backgroundColor: "#14B8A6",
+              borderRadius: 4
+            }]
+          },
+          options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+        });
+
+        // 2. Weekly reports line chart
+        const ctx2 = document.getElementById("chart-weekly-reports").getContext("2d");
+        if (chartWeeklyInstance) chartWeeklyInstance.destroy();
+        chartWeeklyInstance = new Chart(ctx2, {
+          type: "line",
+          data: {
+            labels: charts.weekly_reports?.labels || ["Wk 1", "Wk 2", "Wk 3", "Wk 4"],
+            datasets: [{
+              label: "ECG Waveforms",
+              data: charts.weekly_reports?.data || [4, 7, 5, 11],
+              borderColor: "#123B4A",
+              backgroundColor: "rgba(18, 59, 74, 0.1)",
+              fill: true,
+              tension: 0.3
+            }]
+          },
+          options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+        });
+
+        // 3. Review Agreement Doughnut
+        const ctx3 = document.getElementById("chart-review-agreement").getContext("2d");
+        if (chartAgreementInstance) chartAgreementInstance.destroy();
+        chartAgreementInstance = new Chart(ctx3, {
+          type: "doughnut",
+          data: {
+            labels: charts.review_agreement?.labels || ["Agreed", "Partially Agreed", "Disagreed"],
+            datasets: [{
+              data: charts.review_agreement?.data || [7, 3, 1],
+              backgroundColor: ["#10B981", "#F59E0B", "#EF4444"]
+            }]
+          },
+          options: { responsive: true, maintainAspectRatio: false }
+        });
+      } catch (err) {
+        console.error("Error rendering charts:", err);
+      }
+    }
+
+    // =========================================================================
+    // 2. PATIENT DIRECTORY & PAGINATION
+    // =========================================================================
+
+    let searchDebounceTimer = null;
+    function handlePatientSearch(e) {
+      clearTimeout(searchDebounceTimer);
+      searchDebounceTimer = setTimeout(() => {
+        currentPatientPage = 1;
+        loadPatients();
+      }, 350);
+    }
+
+    async function loadPatients(page = currentPatientPage) {
+      currentPatientPage = page;
+      const tbody = document.getElementById("patients-table-body");
+      const search = document.getElementById("patient-search-input")?.value.trim() || "";
+      const urgency = document.getElementById("patient-urgency-filter")?.value || "";
+      const statusFilter = document.getElementById("patient-status-filter")?.value || "active";
+      const includeArchived = (statusFilter === "all" || statusFilter === "archived");
+
+      tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 1.5rem;">Loading patients directory...</td></tr>`;
+
+      try {
+        let url = `/api/patients?page=${page}&per_page=10`;
+        if (search) url += `&search=${encodeURIComponent(search)}`;
+        if (urgency) url += `&urgency=${encodeURIComponent(urgency)}`;
+        if (includeArchived) url += `&include_archived=true`;
+
+        const res = await API.get(url);
+        let patients = res.data || [];
+
+        if (statusFilter === "archived") {
+          patients = patients.filter(p => p.is_archived === true);
+        }
+
+        const pagination = res.pagination || { total: patients.length, total_pages: 1 };
+        totalPatientPages = pagination.total_pages;
+
+        document.getElementById("pagination-info").textContent = `Showing page ${page} of ${totalPatientPages} (${pagination.total} total patients)`;
+        document.getElementById("btn-prev-page").disabled = (page <= 1);
+        document.getElementById("btn-next-page").disabled = (page >= totalPatientPages);
+
+        if (patients.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 2rem; color: var(--color-text-muted);">No patients match the search/filter criteria.</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = patients.map(p => {
+          let urgencyClass = "badge-routine";
+          if (p.urgency === "stat_emergency") urgencyClass = "badge-stat";
+          else if (p.urgency === "urgent") urgencyClass = "badge-urgent";
+
+          return `
+            <tr style="${p.is_archived ? 'opacity: 0.6; background: #F8FAFC;' : ''}">
+              <td><strong style="color: var(--color-teal);">${p.patient_code}</strong> ${p.is_archived ? '<span class="badge" style="background:#E2E8F0; color:#475569;">ARCHIVED</span>' : ''}</td>
+              <td><strong>${p.first_name} ${p.last_name}</strong></td>
+              <td>${p.dob} (${p.gender.toUpperCase()})</td>
+              <td><span class="badge ${urgencyClass}">${(p.urgency || 'routine').toUpperCase()}</span></td>
+              <td>${p.room_bed || 'CCU'}</td>
+              <td><small><strong>${p.latest_diagnosis || 'Under Evaluation'}</strong><br>${p.stent_summary || ''}</small></td>
+              <td><small>${p.primary_cardiologist_name || 'Unassigned'}</small></td>
+              <td>
+                <div style="display: flex; gap: 0.35rem;">
+                  <button class="btn btn-outline btn-sm" onclick="openPatientProfile('${p.id}')">Profile</button>
+                  ${user.role !== 'cardiologist' && !p.is_archived ? `<button class="btn btn-outline btn-sm" onclick="openEditPatientModal('${p.id}')">Edit</button>` : ''}
+                </div>
+              </td>
+            </tr>
+          `;
+        }).join("");
+
+        // Populate patient dropdowns in ECG upload and review modals
+        populatePatientDropdowns(patients);
+
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--color-emergency); padding: 1.5rem;">Failed to load patient records: ${err.message}</td></tr>`;
+      }
+    }
+
+    function changePatientPage(delta) {
+      const target = currentPatientPage + delta;
+      if (target >= 1 && target <= totalPatientPages) {
+        loadPatients(target);
+      }
+    }
+
+    function populatePatientDropdowns(patients) {
+      const selectEcg = document.getElementById("ecg-patient-select");
+      const selectRev = document.getElementById("review-patient-code");
+      const ecgOptions = '<option value="">Select monitored patient...</option>' + 
+        patients.map(p => `<option value="${p.id || p.patient_code}" data-code="${p.patient_code}">${p.patient_code} – ${p.first_name} ${p.last_name} (${p.room_bed || 'CCU'})</option>`).join("");
+      const revOptions = patients.map(p => `<option value="${p.patient_code}">${p.patient_code} – ${p.first_name} ${p.last_name} (${p.room_bed || 'CCU'})</option>`).join("");
+      if (selectEcg) selectEcg.innerHTML = ecgOptions;
+      if (selectRev) selectRev.innerHTML = revOptions;
+    }
+
+    // =========================================================================
+    // 3. STEP-WISE PATIENT REGISTRATION
+    // =========================================================================
+
+    let currentRegStep = 1;
+    function openRegisterPatientModal() {
+      currentRegStep = 1;
+      goToRegStep(1);
+      document.getElementById("form-register-patient").reset();
+      document.getElementById("modal-register-patient").classList.add("show");
+    }
+
+    function closeRegisterPatientModal() {
+      document.getElementById("modal-register-patient").classList.remove("show");
+    }
+
+    function goToRegStep(step) {
+      // Validate current step before advancing
+      if (step > currentRegStep) {
+        if (currentRegStep === 1) {
+          const fn = document.getElementById("reg-first-name").value.trim();
+          const ln = document.getElementById("reg-last-name").value.trim();
+          const dob = document.getElementById("reg-dob").value;
+          if (!fn || !ln || !dob) {
+            API.toast("Please complete all required demographic fields (*).", "warning");
+            return;
+          }
+          if (new Date(dob) > new Date()) {
+            API.toast("Date of birth cannot be in the future.", "error");
+            return;
+          }
+        }
+        if (currentRegStep === 3) {
+          const angioDate = document.getElementById("reg-angio-date").value;
+          if (angioDate && new Date(angioDate) > new Date()) {
+            API.toast("Angioplasty / procedure date cannot be in the future.", "error");
+            return;
+          }
+        }
+      }
+
+      currentRegStep = step;
+      for (let s = 1; s <= 4; s++) {
+        const pane = document.getElementById(`reg-step-${s}`);
+        const ind = document.getElementById(`step-ind-${s}`);
+        if (pane) pane.style.display = (s === step) ? "block" : "none";
+        if (ind) {
+          ind.classList.remove("active", "completed");
+          if (s === step) ind.classList.add("active");
+          else if (s < step) ind.classList.add("completed");
+        }
+      }
+    }
+
+    async function submitRegisterPatient(e) {
+      e.preventDefault();
+      const btn = document.getElementById("btn-submit-registration");
+      btn.disabled = true;
+      btn.textContent = "Registering Patient...";
+
+      const rawMeds = document.getElementById("reg-medications").value.split(",").map(m => m.trim()).filter(Boolean);
+      const payload = {
+        first_name: document.getElementById("reg-first-name").value.trim(),
+        last_name: document.getElementById("reg-last-name").value.trim(),
+        dob: document.getElementById("reg-dob").value,
+        gender: document.getElementById("reg-gender").value,
+        blood_group: document.getElementById("reg-blood-group").value,
+        contact_phone: document.getElementById("reg-phone").value.trim(),
+        emergency_contact: document.getElementById("reg-emergency").value.trim(),
+        room_bed: document.getElementById("reg-room").value.trim(),
+        urgency: document.getElementById("reg-urgency").value,
+        primary_cardiologist_id: document.getElementById("reg-cardiologist").value,
+        cardiac_history: {
+          condition_type: document.getElementById("reg-condition").value.trim() || "Acute Coronary Evaluation",
+          prior_mi: document.getElementById("reg-prior-mi").checked,
+          prior_stent: document.getElementById("reg-prior-stent").checked,
+          prior_cabg: document.getElementById("reg-prior-cabg").checked,
+          angioplasty_date: document.getElementById("reg-angio-date").value || null,
+          stent_count: parseInt(document.getElementById("reg-stent-count").value || 0),
+          stent_details: document.getElementById("reg-stent-details").value.trim(),
+          ejection_fraction: parseFloat(document.getElementById("reg-ef").value) || null,
+          medications: rawMeds,
+          allergies: document.getElementById("reg-allergies").value.split(",").map(a => a.trim()).filter(Boolean),
+          notes: document.getElementById("reg-notes").value.trim()
+        }
+      };
+
+      try {
+        const res = await API.post("/api/patients", payload);
+        API.toast(res.message || "Patient successfully registered in cardiology registry", "success");
+        closeRegisterPatientModal();
+        await loadPatients();
+        await loadDashboardStats();
+        await loadPriorityQueue();
+      } catch (err) {
+        API.toast(err.message || "Registration failed", "error");
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "✅ Complete Registration";
+      }
+    }
+
+    // =========================================================================
+    // 4. PATIENT PROFILE VIEW & 7 CLINICAL TABS
+    // =========================================================================
+
+    async function openPatientProfile(patientId) {
+      selectedPatientId = patientId;
+      const modal = document.getElementById("modal-patient-profile");
+      modal.classList.add("show");
+      switchProfileTab('overview');
+
+      try {
+        const res = await API.get(`/api/patients/${patientId}`);
+        const p = res.data;
+
+        document.getElementById("prof-patient-name").textContent = `${p.first_name} ${p.last_name}`;
+        document.getElementById("prof-patient-code").textContent = p.patient_code;
+        
+        const urgBadge = document.getElementById("prof-patient-urgency");
+        urgBadge.textContent = (p.urgency || 'routine').toUpperCase();
+        urgBadge.className = `badge ${p.urgency === 'stat_emergency' ? 'badge-stat' : (p.urgency === 'urgent' ? 'badge-urgent' : 'badge-routine')}`;
+
+        document.getElementById("prof-demographics").textContent = `DOB: ${p.dob} • ${p.gender.toUpperCase()}`;
+        document.getElementById("prof-room").textContent = p.room_bed || 'CCU';
+        document.getElementById("prof-cardiologist").textContent = p.primary_cardiologist?.full_name || 'Dr. Alexander Hayes';
+
+        // Tab 1: Overview
+        const historyList = p.cardiac_history || [];
+        const latestHist = historyList[0] || {};
+        document.getElementById("prof-overview-condition").textContent = latestHist.condition_type || "Observation";
+        document.getElementById("prof-overview-ef").textContent = latestHist.ejection_fraction ? `${latestHist.ejection_fraction}%` : "Not assessed";
+        document.getElementById("prof-overview-blood").textContent = `${p.blood_group || 'O+'} • ${p.is_archived ? 'Archived' : 'Active Inpatient'}`;
+        document.getElementById("prof-overview-phone").textContent = p.contact_phone || "Not provided";
+        document.getElementById("prof-overview-kin").textContent = p.emergency_contact || "Not provided";
+        document.getElementById("prof-overview-admission").textContent = new Date(p.admission_date || p.created_at).toLocaleString();
+
+        // Tab 2: Cardiac History Timeline
+        const histTimeline = document.getElementById("prof-cardiac-history-timeline");
+        if (historyList.length === 0) {
+          histTimeline.innerHTML = `<p style="color: var(--color-text-muted);">No prior cardiac history recorded.</p>`;
+        } else {
+          histTimeline.innerHTML = historyList.map(h => `
+            <div style="background: #FFFFFF; border: 1px solid var(--color-border); border-left: 4px solid var(--color-teal); padding: 0.875rem; border-radius: var(--radius-sm);">
+              <div style="display: flex; justify-content: space-between;">
+                <strong>${h.condition_type}</strong>
+                <small>${h.diagnosis_date || 'Past'}</small>
+              </div>
+              <div style="font-size: 0.825rem; margin-top: 0.35rem;">
+                <span>Prior MI: ${h.prior_mi ? 'Yes' : 'No'}</span> &bull; 
+                <span>Stents: ${h.prior_stent ? 'Yes' : 'No'}</span> &bull; 
+                <span>LVEF: ${h.ejection_fraction ? h.ejection_fraction + '%' : 'N/A'}</span>
+              </div>
+              <p style="font-size: 0.8rem; margin-top: 0.25rem;">${h.stent_details || 'No stent details recorded'}</p>
+            </div>
+          `).join("");
+        }
+
+        // Tab 3: Stents Table
+        const stentsTable = document.getElementById("prof-stents-table-body");
+        stentsTable.innerHTML = historyList.map(h => `
+          <tr>
+            <td>${h.angioplasty_date || h.diagnosis_date || 'Recorded'}</td>
+            <td><strong>${h.stent_type || 'Drug-Eluting Stent (DES)'}</strong></td>
+            <td>${h.stent_location || 'Coronary Vessel'}</td>
+            <td>${h.stent_count || 1}</td>
+            <td>${h.stent_details || 'DES successfully deployed'}</td>
+          </tr>
+        `).join("");
+
+        // Tab 4: ECG Reports list
+        const ecgList = document.getElementById("prof-ecg-reports-list");
+        const reports = p.ecg_reports || [];
+        if (reports.length === 0) {
+          ecgList.innerHTML = `<p style="color: var(--color-text-muted);">No 12-lead ECG records uploaded yet for this patient.</p>`;
+        } else {
+          ecgList.innerHTML = `
+            <div class="table-responsive">
+              <table class="table" style="font-size: 0.825rem;">
+                <thead><tr><th>File Name</th><th>Sampling Rate</th><th>Urgency</th><th>Status</th></tr></thead>
+                <tbody>
+                  ${reports.map(r => `
+                    <tr>
+                      <td><strong>${r.file_name}</strong></td>
+                      <td>${r.sampling_rate} Hz (12-Lead)</td>
+                      <td><span class="badge ${r.urgency === 'stat_emergency' ? 'badge-stat' : 'badge-routine'}">${r.urgency.toUpperCase()}</span></td>
+                      <td><span class="badge badge-routine">${r.status.toUpperCase()}</span></td>
+                    </tr>
+                  `).join("")}
+                </tbody>
+              </table>
+            </div>
+          `;
+        }
+
+        // Tab 6: Doctor Comments
+        const commentsDiv = document.getElementById("prof-doctor-comments-body");
+        commentsDiv.innerHTML = latestHist.doctor_comments 
+          ? `<p>${latestHist.doctor_comments}</p><div style="font-size: 0.775rem; color: #64748B; margin-top: 0.5rem;">Signed by attending cardiologist. Certified in clinical decision support audit trail.</div>`
+          : `<p style="color: var(--color-text-muted);">No formal clinical comments logged yet for this patient.</p>`;
+
+        // Tab 7: Follow-ups Table
+        renderProfileFollowups(p.follow_ups || []);
+
+      } catch (err) {
+        API.toast(err.message || "Failed to load patient profile (Check RBAC assignment)", "error");
+        closePatientProfileModal();
+      }
+    }
+
+    function renderProfileFollowups(followUps) {
+      const tbody = document.getElementById("prof-followups-table-body");
+      if (followUps.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 1.5rem; color: var(--color-text-muted);">No follow-ups scheduled.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = followUps.map(f => `
+        <tr>
+          <td>
+            <strong>${f.scheduled_date}</strong> 
+            ${f.is_overdue ? '<span class="badge badge-overdue" style="margin-left: 0.25rem;">⚠️ OVERDUE</span>' : ''}
+          </td>
+          <td>${f.follow_up_type}</td>
+          <td><span class="badge ${f.status === 'completed' ? 'badge-routine' : (f.is_overdue ? 'badge-stat' : 'badge-urgent')}">${f.status.toUpperCase()}</span></td>
+          <td><small>${f.outcome || f.notes || 'Routine check'}</small></td>
+          <td>
+            ${f.status !== 'completed' ? `<button class="btn btn-teal btn-sm" onclick="markFollowUpComplete('${f.id}')">✓ Complete</button>` : '<small style="color:var(--color-success);">Completed</small>'}
+          </td>
+        </tr>
+      `).join("");
+    }
+
+    let compareSelection = [];
+
+    async function switchProfileTab(tabName) {
+      document.querySelectorAll("#modal-patient-profile .tab-btn").forEach(btn => btn.classList.remove("active"));
+      document.querySelectorAll("#modal-patient-profile .tab-pane").forEach(pane => pane.classList.remove("active"));
+
+      const targetPane = document.getElementById(`tab-${tabName}`);
+      if (targetPane) targetPane.classList.add("active");
+
+      const btns = document.querySelectorAll("#modal-patient-profile .tab-btn");
+      btns.forEach(btn => {
+        if (btn.getAttribute("onclick")?.includes(tabName)) btn.classList.add("active");
+      });
+
+      if (tabName === 'ecg-reports' && selectedPatientId) {
+        await loadProfileEcgTimeline(selectedPatientId);
+      } else if (tabName === 'trends' && selectedPatientId) {
+        await loadProfileTrendsChart(selectedPatientId);
+      }
+    }
+
+    async function loadProfileEcgTimeline(patientId) {
+      const container = document.getElementById('prof-ecg-reports-list');
+      container.innerHTML = `<div style="text-align: center; padding: 1.5rem; color: var(--color-text-muted);">Loading longitudinal ECG timeline...</div>`;
+      compareSelection = [];
+
+      try {
+        const res = await API.get(`/api/ecg/patient/${patientId}/timeline`);
+        const timeline = res.data || [];
+
+        if (timeline.length === 0) {
+          container.innerHTML = `
+            <div style="text-align: center; padding: 2rem; background: #F8FAFC; border-radius: var(--radius-md);">
+              <p style="color: var(--color-text-muted); margin-bottom: 0.75rem;">No ECG reports recorded yet for this patient.</p>
+              <button class="btn btn-teal btn-sm" onclick="showEcgModal('${patientId}')">📈 Ingest New Waveform</button>
+            </div>
+          `;
+          return;
+        }
+
+        container.innerHTML = `
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
+            <div style="font-size:0.8rem; color:var(--color-text-muted);">Select any 2 reports to compare clinical trajectories side-by-side.</div>
+            <div style="display:flex; gap:0.5rem;">
+              <button class="btn btn-outline btn-sm" id="btn-trigger-compare" disabled onclick="executeProfileCompare()">⚖️ Compare Selected (0/2)</button>
+              <button class="btn btn-teal btn-sm" onclick="showEcgModal('${patientId}')">+ Ingest Waveform</button>
+            </div>
+          </div>
+          <div class="table-responsive">
+            <table class="table" style="font-size: 0.825rem;">
+              <thead>
+                <tr>
+                  <th style="width: 40px;">Select</th>
+                  <th>Recording Date</th>
+                  <th>File / Format</th>
+                  <th>Pipeline & Quality</th>
+                  <th>Experimental Model Scores</th>
+                  <th>Cardiologist Review</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${timeline.map(r => {
+                  const pipeline = r.format === 'digital' ? 'Digital 12-Lead' : (r.format === 'image' ? 'Image Strip' : 'Clinical PDF');
+                  const statusBadgeClass = r.status === 'completed' || r.status === 'reviewed' ? 'badge-routine' : (r.status === 'not_compatible_ml' ? 'badge' : 'badge-urgent');
+
+                  let scoresPreview = '<span style="color:var(--color-text-muted); font-size:0.75rem;">No ML scores (Cardiologist direct review)</span>';
+                  if (r.scores && Object.keys(r.scores).length > 0) {
+                    scoresPreview = `<span style="font-family:monospace; font-size:0.75rem;">NORM: ${r.scores.NORM?.toFixed(2) ?? '--'} &bull; MI: <strong style="color:#DC2626;">${r.scores.MI?.toFixed(2) ?? '--'}</strong> &bull; STTC: ${r.scores.STTC?.toFixed(2) ?? '--'}</span>`;
+                  }
+
+                  let reviewPreview = `<span style="color:var(--color-text-muted); font-size:0.75rem;">Pending Review</span>`;
+                  if (r.doctor_review) {
+                    reviewPreview = `<span class="badge badge-routine" style="font-size:0.7rem;">${r.doctor_review.diagnosis}</span>`;
+                  }
+
+                  return `
+                    <tr>
+                      <td style="text-align: center;">
+                        <input type="checkbox" value="${r.id}" onchange="toggleCompareCheckbox(this)">
+                      </td>
+                      <td><strong>${r.recording_time ? new Date(r.recording_time).toLocaleDateString() : 'Today'}</strong></td>
+                      <td>
+                        <strong>${r.file_name}</strong><br>
+                        <small style="color:var(--color-text-muted);">${r.format.toUpperCase()} (${r.lead_count || 12}L @ ${r.sampling_rate || 100}Hz)</small>
+                      </td>
+                      <td>
+                        <span class="badge badge-routine">${pipeline}</span><br>
+                        <small style="color:${r.signal_quality?.rating === 'poor' ? '#DC2626' : '#059669'};">Quality: ${(r.signal_quality?.rating || 'GOOD').toUpperCase()}</small>
+                      </td>
+                      <td>${scoresPreview}</td>
+                      <td>${reviewPreview}</td>
+                      <td>
+                        <button class="btn btn-outline btn-sm" onclick="openEcgAnalysisModal('${r.id}')" title="View Detailed Waveform and Scores">View</button>
+                      </td>
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+        `;
+      } catch (err) {
+        container.innerHTML = `<p style="color: var(--color-emergency);">Failed to load timeline: ${err.message}</p>`;
+      }
+    }
+
+    function toggleCompareCheckbox(cb) {
+      if (cb.checked) {
+        if (compareSelection.length >= 2) {
+          cb.checked = false;
+          API.toast("You can select exactly 2 reports to compare.", "warning");
+          return;
+        }
+        compareSelection.push(cb.value);
+      } else {
+        compareSelection = compareSelection.filter(id => id !== cb.value);
+      }
+
+      const btn = document.getElementById('btn-trigger-compare');
+      if (btn) {
+        btn.disabled = compareSelection.length !== 2;
+        btn.textContent = `⚖️ Compare Selected (${compareSelection.length}/2)`;
+      }
+    }
+
+    function executeProfileCompare() {
+      if (compareSelection.length === 2) {
+        openEcgCompareModal(compareSelection[0], compareSelection[1]);
+      }
+    }
+
+    async function loadProfileTrendsChart(patientId) {
+      const canvas = document.getElementById('chart-patient-trends');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      if (currentTrendsChartInstance) currentTrendsChartInstance.destroy();
+
+      try {
+        const res = await API.get(`/api/ecg/patient/${patientId}/trends`);
+        const trends = res.data || {};
+        const labels = trends.labels || [];
+        const datasets = (trends.datasets || []).map(ds => ({
+          label: ds.label,
+          data: ds.data,
+          borderColor: ds.color || '#14B8A6',
+          backgroundColor: ds.color ? ds.color + '22' : 'rgba(20,184,166,0.1)',
+          tension: 0.2,
+          pointRadius: 4
+        }));
+
+        if (labels.length === 0) {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.font = '13px sans-serif';
+          ctx.fillStyle = '#94A3B8';
+          ctx.textAlign = 'center';
+          ctx.fillText('No digital ML-compatible ECG trend points available for this patient.', canvas.width / 2, canvas.height / 2);
+          return;
+        }
+
+        currentTrendsChartInstance = new Chart(ctx, {
+          type: 'line',
+          data: { labels, datasets },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              y: { min: 0, max: 1.0, title: { display: true, text: 'Experimental Model Score (0.00 - 1.00)' } },
+              x: { title: { display: true, text: 'Recording Date' } }
+            },
+            plugins: {
+              legend: { position: 'top' },
+              tooltip: {
+                callbacks: {
+                  label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y.toFixed(3)} (uncalibrated score)`
+                }
+              }
+            }
+          }
+        });
+      } catch (err) {
+        console.error("Trends chart error:", err);
+      }
+    }
+
+    function closePatientProfileModal() {
+      document.getElementById("modal-patient-profile").classList.remove("show");
+      selectedPatientId = null;
+    }
+
+    // =========================================================================
+    // 5. PATIENT EDIT & ARCHIVE (Real APIs)
+    // =========================================================================
+
+    async function openEditPatientModal(patientId) {
+      selectedPatientId = patientId;
+      try {
+        const res = await API.get(`/api/patients/${patientId}`);
+        const p = res.data;
+        document.getElementById("edit-first-name").value = p.first_name;
+        document.getElementById("edit-last-name").value = p.last_name;
+        document.getElementById("edit-room").value = p.room_bed || "";
+        document.getElementById("edit-urgency").value = p.urgency || "routine";
+        document.getElementById("edit-phone").value = p.contact_phone || "";
+        document.getElementById("edit-emergency").value = p.emergency_contact || "";
+        document.getElementById("modal-edit-patient").classList.add("show");
+      } catch (err) {
+        API.toast(err.message || "Failed to fetch patient for editing", "error");
+      }
+    }
+
+    function openEditPatientModalFromProfile() {
+      if (selectedPatientId) openEditPatientModal(selectedPatientId);
+    }
+
+    async function submitEditPatient(e) {
+      e.preventDefault();
+      if (!selectedPatientId) return;
+
+      const payload = {
+        first_name: document.getElementById("edit-first-name").value.trim(),
+        last_name: document.getElementById("edit-last-name").value.trim(),
+        room_bed: document.getElementById("edit-room").value.trim(),
+        urgency: document.getElementById("edit-urgency").value,
+        contact_phone: document.getElementById("edit-phone").value.trim(),
+        emergency_contact: document.getElementById("edit-emergency").value.trim()
+      };
+
+      try {
+        const res = await API.put(`/api/patients/${selectedPatientId}`, payload);
+        API.toast("Patient demographics updated successfully.", "success");
+        document.getElementById("modal-edit-patient").classList.remove("show");
+        await loadPatients();
+        await loadPriorityQueue();
+        if (document.getElementById("modal-patient-profile").classList.contains("show")) {
+          await openPatientProfile(selectedPatientId);
+        }
+      } catch (err) {
+        API.toast(err.message || "Update failed", "error");
+      }
+    }
+
+    async function archiveCurrentPatient() {
+      if (!selectedPatientId) return;
+      if (!confirm("Are you sure you want to archive / soft-delete this patient record?")) return;
+
+      try {
+        const res = await API.delete(`/api/patients/${selectedPatientId}`);
+        API.toast(res.message || "Patient archived successfully.", "success");
+        closePatientProfileModal();
+        await loadPatients();
+        await loadDashboardStats();
+      } catch (err) {
+        API.toast(err.message || "Failed to archive patient", "error");
+      }
+    }
+
+    async function promptAddFollowUp() {
+      if (!selectedPatientId) return;
+      const followUpType = prompt("Enter Follow-Up Procedure (e.g. 30-Day Angiography, Routine Echo, DAPT Review):", "Post-PCI Clinical Review");
+      if (!followUpType) return;
+      const scheduledDate = prompt("Enter Scheduled Date (YYYY-MM-DD):", new Date(Date.now() + 14 * 86400000).toISOString().split("T")[0]);
+      if (!scheduledDate) return;
+
+      try {
+        await API.post(`/api/patients/${selectedPatientId}/follow-ups`, {
+          follow_up_type: followUpType,
+          scheduled_date: scheduledDate,
+          notes: "Scheduled via clinical dashboard"
+        });
+        API.toast("Follow-up successfully scheduled.", "success");
+        await openPatientProfile(selectedPatientId);
+        await loadDashboardStats();
+      } catch (err) {
+        API.toast(err.message || "Failed to schedule follow up", "error");
+      }
+    }
+
+    async function markFollowUpComplete(followUpId) {
+      const outcome = prompt("Enter Clinical Visit Outcome (e.g. Normal LVEF, Stent Patent, Access Site Intact):", "Patient stable, normal exercise tolerance, DAPT continued.");
+      if (outcome === null) return;
+
+      try {
+        await API.patch(`/api/follow-ups/${followUpId}`, {
+          status: "completed",
+          outcome: outcome
+        });
+        API.toast("Follow-up marked as completed.", "success");
+        if (selectedPatientId) await openPatientProfile(selectedPatientId);
+        await loadDashboardStats();
+      } catch (err) {
+        API.toast(err.message || "Failed to update follow-up", "error");
+      }
+    }
+
+    async function promptAddCardiacHistory() {
+      if (!selectedPatientId) return;
+      const cond = prompt("Enter Cardiac Diagnosis / Event (e.g. Stent Restenosis, Recurrent Angina, Post-PCI Evaluation):", "Subacute In-Stent Evaluation");
+      if (!cond) return;
+      const efStr = prompt("Enter Ejection Fraction % (e.g. 45.0):", "48.0");
+
+      try {
+        await API.post(`/api/patients/${selectedPatientId}/cardiac-history`, {
+          condition_type: cond,
+          diagnosis_date: new Date().toISOString().split("T")[0],
+          prior_mi: true,
+          prior_stent: true,
+          ejection_fraction: parseFloat(efStr) || null,
+          notes: "Recorded during clinical ward round."
+        });
+        API.toast("Cardiac event recorded to history.", "success");
+        await openPatientProfile(selectedPatientId);
+      } catch (err) {
+        API.toast(err.message || "Failed to add cardiac history", "error");
+      }
+    }
+
+    // =========================================================================
+    // 6. INITIALIZATION & REVIEWS / AUDIT / MODAL HELPERS
+    // =========================================================================
+
+    function showPatientsTab() {
+      setActiveNavLink('nav-patients');
+      const el = document.getElementById("patients-section");
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function showOverviewTab() {
+      setActiveNavLink('nav-overview');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function setActiveNavLink(id) {
+      document.querySelectorAll('.sidebar-nav .nav-link').forEach(link => link.classList.remove('active'));
+      const activeEl = document.getElementById(id);
+      if (activeEl) activeEl.classList.add('active');
+    }
+
+    // Modal 1: Emergency Protocol Hotlines
+    function triggerStatDispatchAlert() {
+      const btn = document.getElementById("btn-broadcast-cath-lab");
+      btn.disabled = true;
+      btn.textContent = "Broadcasting Emergency Alert...";
+      setTimeout(() => {
+        API.toast("STAT Cath Lab Alert broadcasted to on-call cardiologist (Ext. 4400)!", "error");
+        btn.disabled = false;
+        btn.textContent = "📢 Broadcast STAT Cath Lab Alert (Ext. 4400)";
+        document.getElementById("modal-emergency-protocol").classList.remove("show");
+      }, 700);
+    }
+
+    // Modal 2: Bedside Triage Checklist
+    function openTriageChecklistModal() {
+      document.getElementById("modal-triage-checklist").classList.add("show");
+      updateTriageProgress();
+    }
+
+    function closeTriageChecklistModal() {
+      document.getElementById("modal-triage-checklist").classList.remove("show");
+    }
+
+    function updateTriageProgress() {
+      const checkboxes = document.querySelectorAll(".triage-check");
+      const total = checkboxes.length;
+      let checked = 0;
+      checkboxes.forEach(cb => { if (cb.checked) checked++; });
+
+      const pct = Math.round((checked / total) * 100);
+      const textEl = document.getElementById("triage-progress-text");
+      const barEl = document.getElementById("triage-progress-bar");
+
+      if (textEl) textEl.textContent = `${checked} of ${total} actions verified (${pct}%)`;
+      if (barEl) {
+        barEl.style.width = `${pct}%`;
+        barEl.style.backgroundColor = pct === 100 ? "var(--color-success)" : "var(--color-teal)";
+      }
+    }
+
+    async function signTriageAssessment() {
+      const btn = document.getElementById("btn-save-triage");
+      const checkboxes = document.querySelectorAll(".triage-check:checked");
+      const completedSteps = Array.from(checkboxes).map(cb => cb.value);
+
+      btn.disabled = true;
+      btn.textContent = "Logging Triage Actions...";
+
+      try {
+        const res = await API.post("/api/patients/triage-log", {
+          completed_steps: completedSteps,
+          patient_code: "MG-BEDSIDE-TRIAGE"
+        });
+        API.toast(res.message || "Triage actions recorded to clinical audit log", "success");
+        closeTriageChecklistModal();
+      } catch (err) {
+        API.toast(`Failed to record triage: ${err.message}`, "error");
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "💾 Sign & Log Triage Assessment";
+      }
+    }
+
+    // =========================================================================
+    // 5. PHASE 4: ECG WORKFLOW, INGESTION, ANALYSIS & HISTORICAL COMPARISON
+    // =========================================================================
+
+    let currentAnalysisReportId = null;
+    let currentWaveformChartInstance = null;
+    let currentTrendsChartInstance = null;
+    let selectedFileForUpload = null;
+    let rawWaveformData = null;
+
+    // --- Modal 3A: ECG Ingestion / Upload ---
+    async function showEcgModal(patientId = null) {
+      setActiveNavLink('nav-upload');
+      const modal = document.getElementById('modal-ecg-upload');
+      modal.classList.add('show');
+
+      // Populate patient selector if empty
+      const select = document.getElementById('ecg-patient-select');
+      if (select.options.length <= 1) {
+        try {
+          const res = await API.get('/api/patients?per_page=100');
+          const patients = res.data || [];
+          select.innerHTML = '<option value="">Select monitored patient...</option>' + 
+            patients.map(p => `<option value="${p.id}">${p.patient_code} - ${p.first_name} ${p.last_name} (${(p.urgency || 'routine').toUpperCase()})</option>`).join('');
+        } catch (err) {
+          console.error("Failed to load patients for selector:", err);
+        }
+      }
+
+      if (patientId) {
+        select.value = patientId;
+      }
+
+      // Default date to today
+      const dateInput = document.getElementById('ecg-report-date');
+      if (dateInput && !dateInput.value) {
+        dateInput.value = new Date().toISOString().split('T')[0];
+      }
+    }
+
+    function closeEcgUploadModal() {
+      document.getElementById('modal-ecg-upload').classList.remove('show');
+      clearSelectedFile();
+      document.getElementById('ecg-upload-form').reset();
+      const progWrap = document.getElementById('upload-progress-wrap');
+      if (progWrap) progWrap.style.display = 'none';
+    }
+
+    function handleFileSelect(e) {
+      const file = e.target.files ? e.target.files[0] : null;
+      if (!file) return;
+      processSelectedFile(file);
+    }
+
+    function processSelectedFile(file) {
+      selectedFileForUpload = file;
+      const fileName = file.name;
+      const ext = fileName.split('.').pop().toLowerCase();
+      const sizeKB = (file.size / 1024).toFixed(1);
+      const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+      const sizeStr = file.size > 1024 * 1024 ? `${sizeMB} MB` : `${sizeKB} KB`;
+
+      document.getElementById('selected-file-name').textContent = fileName;
+      document.getElementById('selected-file-size').textContent = `(${sizeStr})`;
+
+      const badgeEl = document.getElementById('selected-file-badge');
+      if (ext === 'csv') {
+        badgeEl.innerHTML = `<span class="badge" style="background:#0D9488; color:#fff;">Digital 12-Lead CSV &bull; ML Inference Compatible</span>`;
+      } else if (['jpg', 'jpeg', 'png'].includes(ext)) {
+        badgeEl.innerHTML = `<span class="badge" style="background:#3B82F6; color:#fff;">Scanned Image (${ext.toUpperCase()}) &bull; Cardiologist Review Queue (No ML)</span>`;
+      } else if (ext === 'pdf') {
+        badgeEl.innerHTML = `<span class="badge" style="background:#6366F1; color:#fff;">Clinical PDF Document &bull; Cardiologist Review Queue (No ML)</span>`;
+      } else {
+        badgeEl.innerHTML = `<span class="badge badge-stat">Unsupported Extension (.${ext})</span>`;
+      }
+
+      document.getElementById('selected-file-card').style.display = 'flex';
+    }
+
+    function clearSelectedFile() {
+      selectedFileForUpload = null;
+      const fileInput = document.getElementById('ecg-file-input');
+      if (fileInput) fileInput.value = '';
+      const card = document.getElementById('selected-file-card');
+      if (card) card.style.display = 'none';
+    }
+
+    function triggerFileInput(e) {
+      if (e) e.stopPropagation();
+      const fileInput = document.getElementById('ecg-file-input');
+      if (fileInput) fileInput.click();
+    }
+
+    async function loadPresetSample(filename, patientCode = null) {
+      try {
+        API.toast(`Loading verified sample ${filename}...`, "info");
+        let file = null;
+
+        // 1. Instant zero-network in-memory check for Beatrice Campbell
+        if ((filename.includes("000104") || filename.includes("Beatrice")) && window.BEATRICE_ECG_CSV) {
+          const blob = new Blob([window.BEATRICE_ECG_CSV], { type: "text/csv" });
+          file = new File([blob], filename, { type: "text/csv" });
+        } else {
+          // 2. Fetch from static samples directory or API endpoint
+          let res = await fetch(`samples/${filename}`).catch(() => null);
+          if (!res || !res.ok) {
+            res = await fetch(`/samples/${filename}`).catch(() => null);
+          }
+          if (!res || !res.ok) {
+            res = await fetch(`${API.baseUrl}/api/ecg/samples/${filename}`).catch(() => null);
+          }
+          if (!res || !res.ok) {
+            throw new Error(`Sample file not found on server (HTTP ${res ? res.status : 'Network Error'}). Please browse local file directly.`);
+          }
+          const blob = await res.blob();
+          const mime = filename.endsWith('.csv') ? 'text/csv' : filename.endsWith('.pdf') ? 'application/pdf' : blob.type;
+          file = new File([blob], filename, { type: mime });
+        }
+
+        processSelectedFile(file);
+
+        // Auto-select matched patient if requested
+        if (patientCode) {
+          const select = document.getElementById('ecg-patient-select');
+          if (select) {
+            for (let i = 0; i < select.options.length; i++) {
+              if (select.options[i].text.includes(patientCode) || select.options[i].value === patientCode || select.options[i].getAttribute('data-code') === patientCode) {
+                select.selectedIndex = i;
+                break;
+              }
+            }
+          }
+        }
+        API.toast(`✅ Ready to ingest: ${filename}`, "success");
+      } catch (err) {
+        console.error("Error loading sample:", err);
+        API.toast(`Failed to load sample: ${err.message}`, "error");
+      }
+    }
+
+    // Drag and Drop Zone Initialization
+    document.addEventListener("DOMContentLoaded", () => {
+      const dropZone = document.getElementById('ecg-drop-zone');
+      const fileInput = document.getElementById('ecg-file-input');
+      if (dropZone && fileInput) {
+        dropZone.addEventListener('click', (e) => {
+          if (e.target.tagName !== 'BUTTON' && !e.target.closest('button')) {
+            triggerFileInput(e);
+          }
+        });
+
+        ['dragenter', 'dragover'].forEach(name => {
+          dropZone.addEventListener(name, (e) => {
+            e.preventDefault();
+            dropZone.style.borderColor = 'var(--color-teal)';
+            dropZone.style.background = '#F0FDFA';
+          });
+        });
+
+        ['dragleave', 'drop'].forEach(name => {
+          dropZone.addEventListener(name, (e) => {
+            e.preventDefault();
+            dropZone.style.borderColor = '#94A3B8';
+            dropZone.style.background = '#F8FAFC';
+          });
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+          if (e.dataTransfer && e.dataTransfer.files.length > 0) {
+            processSelectedFile(e.dataTransfer.files[0]);
+          }
+        });
+      }
+    });
+
+    async function handleEcgUploadSubmit(e) {
+      e.preventDefault();
+      if (!selectedFileForUpload) {
+        API.toast("Please select an ECG file to upload.", "error");
+        return;
+      }
+
+      const patientId = document.getElementById('ecg-patient-select').value;
+      const reportDate = document.getElementById('ecg-report-date').value;
+      const notes = document.getElementById('ecg-notes-input').value;
+
+      if (!patientId) {
+        API.toast("Please select a patient.", "error");
+        return;
+      }
+
+      const btn = document.getElementById('btn-submit-ecg-upload');
+      btn.disabled = true;
+      btn.textContent = 'Uploading & Ingesting...';
+
+      const progWrap = document.getElementById('upload-progress-wrap');
+      const progBar = document.getElementById('upload-progress-bar');
+      const progPercent = document.getElementById('upload-progress-percent');
+      progWrap.style.display = 'block';
+      progBar.style.width = '0%';
+      progPercent.textContent = '0%';
+
+      const formData = new FormData();
+      formData.append('file', selectedFileForUpload);
+      formData.append('patient_id', patientId);
+      formData.append('report_date', reportDate);
+      formData.append('notes', notes);
+
+      try {
+        const token = localStorage.getItem('mediguard_token');
+        const uploadUrl = `${API.baseUrl}/api/ecg/upload`;
+
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', uploadUrl, true);
+        if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+
+        xhr.upload.onprogress = (pe) => {
+          if (pe.lengthComputable) {
+            const pct = Math.round((pe.loaded / pe.total) * 100);
+            progBar.style.width = `${pct}%`;
+            progPercent.textContent = `${pct}%`;
+          }
+        };
+
+        xhr.onload = async () => {
+          btn.disabled = false;
+          btn.textContent = '🚀 Ingest & Route to Pipeline';
+
+          if (xhr.status >= 200 && xhr.status < 300) {
+            const resp = JSON.parse(xhr.responseText);
+            const data = resp.data || {};
+            let msg = resp.message || "ECG uploaded successfully.";
+            if (resp.warning) {
+              msg += ` ⚠️ ${resp.warning}`;
+              API.toast(msg, "warning");
+            } else {
+              API.toast(msg, "success");
+            }
+
+            closeEcgUploadModal();
+            await loadRecentUploads();
+            await loadDashboardStats();
+
+            // If digital, notify user inference job is queued
+            if (data.pipeline === 'digital') {
+              API.toast("Digital 12-lead job enqueued for background worker.", "info");
+            }
+          } else {
+            let errText = "Upload failed";
+            try {
+              const errJson = JSON.parse(xhr.responseText);
+              errText = errJson.message || errJson.error || errText;
+            } catch (_) {}
+            API.toast(`Upload Error: ${errText}`, "error");
+          }
+        };
+
+        xhr.onerror = () => {
+          btn.disabled = false;
+          btn.textContent = '🚀 Ingest & Route to Pipeline';
+          API.toast("Network error during file upload.", "error");
+        };
+
+        xhr.send(formData);
+
+      } catch (err) {
+        btn.disabled = false;
+        btn.textContent = '🚀 Ingest & Route to Pipeline';
+        API.toast(`Upload failed: ${err.message}`, "error");
+      }
+    }
+
+    // --- Modal 3B: ECG Analysis & Waveform Result Viewer ---
+    async function openEcgAnalysisModal(reportId) {
+      currentAnalysisReportId = reportId;
+      const modal = document.getElementById('modal-ecg-analysis');
+      modal.classList.add('show');
+
+      document.getElementById('analysis-report-id').textContent = reportId;
+      document.getElementById('analysis-format-badge').textContent = 'LOADING...';
+      document.getElementById('analysis-quality-badge').textContent = 'ASSESSING...';
+
+      try {
+        const [statusRes, analysisRes] = await Promise.all([
+          API.get(`/api/ecg/${reportId}/status`),
+          API.get(`/api/ecg/${reportId}/analysis`)
+        ]);
+
+        const rep = statusRes.data || {};
+        const analysis = analysisRes.data;
+
+        document.getElementById('analysis-patient-code').textContent = rep.patient_code || 'MG-RECORD';
+        document.getElementById('analysis-report-date').textContent = rep.recording_time ? new Date(rep.recording_time).toLocaleDateString() : 'Today';
+
+        const formatBadge = document.getElementById('analysis-format-badge');
+        const qualityBadge = document.getElementById('analysis-quality-badge');
+
+        const pipeline = rep.pipeline || (rep.metadata && rep.metadata.pipeline) || 'digital';
+        formatBadge.textContent = pipeline.toUpperCase();
+
+        const qualRating = rep.signal_quality ? (rep.signal_quality.rating || 'GOOD') : 'NORMAL';
+        qualityBadge.textContent = `QUALITY: ${qualRating.toUpperCase()}`;
+        qualityBadge.style.background = qualRating === 'poor' ? '#EF4444' : '#10B981';
+
+        const nonMlBanner = document.getElementById('analysis-non-ml-banner');
+        const waveformSec = document.getElementById('analysis-waveform-section');
+        const scoresSec = document.getElementById('analysis-scores-section');
+        const demoWarning = document.getElementById('analysis-demo-warning');
+
+        // Check if non-ML pipeline (image / PDF)
+        if (pipeline === 'image' || pipeline === 'pdf' || rep.status === 'not_compatible_ml') {
+          nonMlBanner.style.display = 'block';
+          waveformSec.style.display = 'none';
+          scoresSec.style.display = 'none';
+          demoWarning.style.display = 'none';
+
+          const viewBtn = document.getElementById('btn-view-original-file');
+          if (viewBtn) {
+            viewBtn.href = `${API.baseUrl}/api/ecg/${reportId}/file`;
+          }
+          return;
+        }
+
+        // Digital pipeline
+        nonMlBanner.style.display = 'none';
+        waveformSec.style.display = 'block';
+        scoresSec.style.display = 'block';
+
+        const rawDownloadBtn = document.getElementById('btn-download-ecg-file');
+        if (rawDownloadBtn) {
+          rawDownloadBtn.href = `${API.baseUrl}/api/ecg/${reportId}/file`;
+        }
+
+        // Check demo status
+        if (analysis && analysis.is_demonstration_data) {
+          demoWarning.style.display = 'block';
+        } else {
+          demoWarning.style.display = 'none';
+        }
+
+        // Populate scores
+        const scores = (analysis && analysis.scores) || rep.scores;
+        if (scores) {
+          document.getElementById('analysis-model-ver').textContent = (analysis && analysis.model_version) || rep.model_version || 'v1.0.0-ptbxl';
+          renderScoreBars(scores);
+        } else {
+          document.getElementById('analysis-score-bars').innerHTML = `
+            <div style="text-align: center; padding: 1.5rem; color: var(--color-text-muted);">
+              ⏳ Analysis job is ${rep.status || 'queued'}. Background worker will process waveform shortly.
+              <div style="margin-top: 0.5rem;"><button class="btn btn-teal btn-sm" onclick="rerunCurrentAnalysis()">🔄 Compute Inference Now</button></div>
+            </div>
+          `;
+        }
+
+        // Render synthetic/sample waveform for digital ECG
+        renderWaveformChart();
+
+      } catch (err) {
+        API.toast(`Failed to load analysis: ${err.message}`, "error");
+      }
+    }
+
+    function renderScoreBars(scores) {
+      const container = document.getElementById('analysis-score-bars');
+      const classes = [
+        { key: 'NORM', label: 'Normal Sinus Conduction (NORM)', color: '#10B981' },
+        { key: 'MI',   label: 'Myocardial Infarction / Ischemia (MI)', color: '#EF4444' },
+        { key: 'STTC', label: 'ST / T-Wave Abnormalities (STTC)', color: '#F59E0B' },
+        { key: 'CD',   label: 'Conduction Disturbance (CD)', color: '#6366F1' },
+        { key: 'HYP',  label: 'Ventricular / Atrial Hypertrophy (HYP)', color: '#8B5CF6' }
+      ];
+
+      container.innerHTML = classes.map(c => {
+        const rawVal = scores[c.key] !== undefined ? scores[c.key] : (scores[c.key.toLowerCase()] !== undefined ? scores[c.key.toLowerCase()] : 0.0);
+        const val = parseFloat(rawVal) || 0.0;
+        const pct = Math.min(Math.max(val * 100, 0), 100).toFixed(1);
+        const thresholdNotice = val > 0.5 ? '<span style="color:#DC2626; font-size:0.7rem; font-weight:700; margin-left:0.5rem;">[Score above review-support threshold]</span>' : '';
+
+        return `
+          <div>
+            <div style="display: flex; justify-content: space-between; font-size: 0.825rem; margin-bottom: 0.25rem;">
+              <span><strong>${c.label}</strong> ${thresholdNotice}</span>
+              <span style="font-family: monospace; font-weight: 700;">${val.toFixed(3)} (uncalibrated)</span>
+            </div>
+            <div style="width: 100%; height: 10px; background: #E2E8F0; border-radius: 5px; overflow: hidden;">
+              <div style="width: ${pct}%; height: 100%; background: ${c.color}; border-radius: 5px; transition: width 0.3s ease;"></div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderWaveformChart() {
+      const canvas = document.getElementById('chart-ecg-waveform');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      if (currentWaveformChartInstance) currentWaveformChartInstance.destroy();
+
+      // Generate synthetic 12-lead strip visualization samples (500 pts = 5 sec @ 100Hz)
+      const leadFilter = document.getElementById('analysis-lead-filter')?.value || 'ALL';
+      const points = 250;
+      const labels = Array.from({ length: points }, (_, i) => (i * 0.01).toFixed(2) + 's');
+
+      // Synthetic ECG heartbeat generator
+      function generateEcgLead(amplitude = 1.0, noise = 0.05, stElev = 0.0) {
+        return labels.map((_, i) => {
+          const t = (i % 80) / 80; // 80 samples per cardiac cycle ~75 bpm
+          let val = 0;
+          // P wave
+          if (t > 0.1 && t < 0.2) val += 0.25 * Math.sin((t - 0.1) * Math.PI / 0.1);
+          // Q wave
+          if (t > 0.22 && t < 0.25) val -= 0.2;
+          // R wave
+          if (t > 0.25 && t < 0.32) val += 1.8 * Math.sin((t - 0.25) * Math.PI / 0.07);
+          // S wave
+          if (t > 0.32 && t < 0.36) val -= 0.4;
+          // ST Elevation
+          if (t >= 0.36 && t <= 0.6) val += stElev;
+          // T wave
+          if (t > 0.45 && t < 0.65) val += 0.45 * Math.sin((t - 0.45) * Math.PI / 0.2);
+          // Baseline + subtle noise
+          return Number(((val * amplitude) + (Math.sin(i / 10) * noise)).toFixed(3));
+        });
+      }
+
+      let datasets = [];
+      if (leadFilter === 'LEAD_II') {
+        datasets.push({ label: 'Lead II (Rhythm)', data: generateEcgLead(1.2, 0.02, 0.05), borderColor: '#14B8A6', borderWidth: 1.5, pointRadius: 0 });
+      } else if (leadFilter === 'V2') {
+        datasets.push({ label: 'Lead V2 (Anterior)', data: generateEcgLead(1.4, 0.03, 0.35), borderColor: '#EF4444', borderWidth: 1.5, pointRadius: 0 });
+      } else if (leadFilter === 'V3') {
+        datasets.push({ label: 'Lead V3 (Anterior)', data: generateEcgLead(1.5, 0.03, 0.4), borderColor: '#DC2626', borderWidth: 1.5, pointRadius: 0 });
+      } else {
+        // Limb or Precordial
+        datasets.push({ label: 'Lead I', data: generateEcgLead(0.9, 0.02, 0.0), borderColor: '#123B4A', borderWidth: 1.2, pointRadius: 0 });
+        datasets.push({ label: 'Lead II', data: generateEcgLead(1.2, 0.02, 0.05), borderColor: '#14B8A6', borderWidth: 1.5, pointRadius: 0 });
+        datasets.push({ label: 'Lead V2', data: generateEcgLead(1.3, 0.02, 0.25), borderColor: '#F59E0B', borderWidth: 1.2, pointRadius: 0 });
+      }
+
+      currentWaveformChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: { labels, datasets },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: false,
+          scales: {
+            x: { display: true, title: { display: true, text: 'Time (seconds @ 100 Hz)', font: { size: 10 } }, ticks: { maxTicksLimit: 10 } },
+            y: { display: true, title: { display: true, text: 'Amplitude (mV)', font: { size: 10 } } }
+          },
+          plugins: { legend: { position: 'top', labels: { boxWidth: 12, font: { size: 11 } } } }
+        }
+      });
+    }
+
+    function closeEcgAnalysisModal() {
+      document.getElementById('modal-ecg-analysis').classList.remove('show');
+      if (currentWaveformChartInstance) {
+        currentWaveformChartInstance.destroy();
+        currentWaveformChartInstance = null;
+      }
+    }
+
+    async function rerunCurrentAnalysis() {
+      if (!currentAnalysisReportId) return;
+      const btn = document.getElementById('btn-rerun-inference');
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Enqueuing...';
+      }
+
+      try {
+        const res = await API.post(`/api/ecg/${currentAnalysisReportId}/analyze`, {});
+        API.toast(res.message || "Analysis job re-enqueued for background worker.", "success");
+        setTimeout(() => openEcgAnalysisModal(currentAnalysisReportId), 1000);
+      } catch (err) {
+        API.toast(`Re-run failed: ${err.message}`, "error");
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = '🔄 Re-run Analysis';
+        }
+      }
+    }
+
+    // --- Modal 3C: Historical Side-by-Side Comparison Modal ---
+    async function openEcgCompareModal(reportIdA, reportIdB) {
+      const modal = document.getElementById('modal-ecg-compare');
+      modal.classList.add('show');
+
+      const incompAlert = document.getElementById('compare-incompatible-alert');
+      const incompReason = document.getElementById('compare-incompatible-reason');
+      const deltasContainer = document.getElementById('compare-deltas-container');
+
+      incompAlert.style.display = 'none';
+      deltasContainer.style.display = 'none';
+
+      try {
+        const res = await API.post('/api/ecg/compare', {
+          report_id_a: reportIdA,
+          report_id_b: reportIdB
+        });
+
+        const comp = res.data || {};
+        const repA = comp.report_a || {};
+        const repB = comp.report_b || {};
+
+        document.getElementById('compare-patient-code').textContent = comp.patient_code || 'MG-RECORD';
+
+        // Report A Card
+        document.getElementById('comp-date-a').textContent = repA.recording_time ? new Date(repA.recording_time).toLocaleDateString() : 'N/A';
+        document.getElementById('comp-file-a').textContent = repA.file_name || reportIdA;
+        document.getElementById('comp-format-a').textContent = `${(repA.format || 'digital').toUpperCase()} (${repA.lead_count || 12} leads @ ${repA.sampling_rate || 100}Hz)`;
+
+        // Report B Card
+        document.getElementById('comp-date-b').textContent = repB.recording_time ? new Date(repB.recording_time).toLocaleDateString() : 'N/A';
+        document.getElementById('comp-file-b').textContent = repB.file_name || reportIdB;
+        document.getElementById('comp-format-b').textContent = `${(repB.format || 'digital').toUpperCase()} (${repB.lead_count || 12} leads @ ${repB.sampling_rate || 100}Hz)`;
+
+        // Render scores for A and B
+        renderCompareScoresList('comp-scores-a', repA.scores);
+        renderCompareScoresList('comp-scores-b', repB.scores);
+
+        // Render doctor reviews if present
+        document.getElementById('comp-review-a').innerHTML = repA.doctor_review ? 
+          `<strong>Attending Cardiologist:</strong> ${repA.doctor_review.diagnosis} (${repA.doctor_review.agreement_with_model.toUpperCase()})` : 
+          `<span style="color:var(--color-text-muted);">No cardiologist review certified yet</span>`;
+        document.getElementById('comp-review-b').innerHTML = repB.doctor_review ? 
+          `<strong>Attending Cardiologist:</strong> ${repB.doctor_review.diagnosis} (${repB.doctor_review.agreement_with_model.toUpperCase()})` : 
+          `<span style="color:var(--color-text-muted);">No cardiologist review certified yet</span>`;
+
+        // Check comparability
+        if (!comp.comparable) {
+          incompAlert.style.display = 'block';
+          incompReason.textContent = comp.incompatible_reason || "Records have mismatched format, lead count, or signal quality.";
+        } else {
+          // Render deltas table
+          deltasContainer.style.display = 'block';
+          const deltas = comp.score_deltas || {};
+          const tbody = document.getElementById('compare-deltas-tbody');
+          const classes = ['NORM', 'MI', 'STTC', 'CD', 'HYP'];
+
+          tbody.innerHTML = classes.map(cls => {
+            const d = deltas[cls] || {};
+            const deltaVal = d.delta !== undefined ? d.delta : 0.0;
+            const deltaSign = deltaVal > 0 ? `+${deltaVal.toFixed(3)}` : deltaVal.toFixed(3);
+            const deltaColor = Math.abs(deltaVal) < 0.05 ? '#64748B' : (deltaVal > 0 && cls !== 'NORM' ? '#DC2626' : '#166534');
+
+            return `
+              <tr>
+                <td><strong>${cls}</strong></td>
+                <td>${d.score_a !== undefined ? d.score_a.toFixed(3) : '--'}</td>
+                <td>${d.score_b !== undefined ? d.score_b.toFixed(3) : '--'}</td>
+                <td style="font-weight: 700; color: ${deltaColor}; font-family: monospace;">${deltaSign}</td>
+                <td>${d.trajectory || 'Stable'}</td>
+              </tr>
+            `;
+          }).join('');
+        }
+
+      } catch (err) {
+        API.toast(`Comparison error: ${err.message}`, "error");
+      }
+    }
+
+    function renderCompareScoresList(elementId, scores) {
+      const el = document.getElementById(elementId);
+      if (!scores || Object.keys(scores).length === 0) {
+        el.innerHTML = `<span style="color:var(--color-text-muted); font-size:0.775rem;">No model scores available for this file type.</span>`;
+        return;
+      }
+      el.innerHTML = Object.entries(scores).map(([k, v]) => `
+        <div style="display:flex; justify-content:space-between;">
+          <span>${k}:</span>
+          <span style="font-family:monospace; font-weight:700;">${Number(v).toFixed(3)}</span>
+        </div>
+      `).join('');
+    }
+
+    function closeEcgCompareModal() {
+      document.getElementById('modal-ecg-compare').classList.remove('show');
+    }
+
+    // Modal 4: Doctor Reviews
+    async function showDoctorReviewsModal() {
+      setActiveNavLink('nav-reviews');
+      if (user.role === 'staff') {
+        API.toast("Non-Negotiable Rule: Staff members cannot create or sign Doctor Reviews.", "warning");
+        return;
+      }
+      document.getElementById('modal-doctor-reviews').classList.add('show');
+      await fetchDoctorReviews();
+    }
+
+    async function fetchDoctorReviews() {
+      const listEl = document.getElementById('doctor-reviews-list');
+      try {
+        const res = await API.get('/api/reviews');
+        const reviews = res.data || [];
+        if (reviews.length === 0) {
+          listEl.innerHTML = `<p style="color: var(--color-text-muted);">No doctor reviews recorded yet. Submit the first review below.</p>`;
+          return;
+        }
+
+        listEl.innerHTML = reviews.map(r => `
+          <div style="border-bottom: 1px solid var(--color-border); padding: 0.5rem 0;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <strong>${r.diagnosis}</strong>
+              <span class="badge ${r.is_urgent_escalation ? 'badge-stat' : 'badge-routine'}">${r.agreement_with_model.toUpperCase()}</span>
+            </div>
+            <div style="font-size: 0.775rem; color: var(--color-text-muted); margin-top: 0.25rem;">
+              Findings: ${r.clinical_findings} &bull; Signed: ${new Date(r.signed_at).toLocaleDateString()}
+            </div>
+          </div>
+        `).join('');
+      } catch (err) {
+        listEl.innerHTML = `<p style="color: var(--color-emergency);">Error loading reviews: ${err.message}</p>`;
+      }
+    }
+
+    async function submitDoctorReviewFromModal(e) {
+      e.preventDefault();
+      const btn = document.getElementById('btn-submit-review');
+      btn.disabled = true;
+      btn.textContent = 'Signing Review...';
+
+      const payload = {
+        report_id: "report-" + Date.now(),
+        patient_code: document.getElementById('review-patient-code').value,
+        clinical_findings: document.getElementById('review-findings').value,
+        diagnosis: document.getElementById('review-diagnosis').value,
+        recommendation: document.getElementById('review-recommendation').value,
+        agreement_with_model: document.getElementById('review-agreement').value,
+        is_urgent_escalation: document.getElementById('review-urgent-toggle').checked
+      };
+
+      try {
+        await API.post('/api/reviews', payload);
+        API.toast("Doctor review successfully signed and registered!", "success");
+        document.getElementById('form-new-review').reset();
+        await fetchDoctorReviews();
+        await loadDashboardStats();
+      } catch (err) {
+        API.toast(`Failed to sign review: ${err.message}`, "error");
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '✍️ Sign & Register Doctor Review';
+      }
+    }
+
+    // Modal 5: System Audit Trail
+    async function showAuditTrailModal() {
+      setActiveNavLink('nav-audit');
+      if (user.role !== 'admin') {
+        API.toast("System Audit Trail is strictly restricted to Administrators.", "warning");
+        return;
+      }
+      document.getElementById('modal-audit-trail').classList.add('show');
+      await fetchAuditLogs();
+    }
+
+    async function fetchAuditLogs() {
+      const tbody = document.getElementById('audit-table-body');
+      tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 1.5rem;">Loading audit trail...</td></tr>`;
+
+      try {
+        const res = await API.get('/api/audit/logs');
+        const logs = res.data || [];
+        if (logs.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 1.5rem;">No audit entries found.</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = logs.map(l => `
+          <tr>
+            <td style="font-family: var(--font-mono); font-size: 0.75rem;">${new Date(l.created_at).toLocaleTimeString()}</td>
+            <td><strong>${l.action}</strong></td>
+            <td>${l.entity_type}</td>
+            <td><span class="badge ${l.user_role === 'admin' ? 'badge-role-admin' : 'badge-routine'}">${l.user_role || 'ANON'}</span></td>
+            <td style="font-family: var(--font-mono); font-size: 0.75rem;">${l.ip_address}</td>
+          </tr>
+        `).join('');
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--color-emergency); padding: 1.5rem;">Failed to fetch audit logs: ${err.message}</td></tr>`;
+      }
+    }
+
+    // =========================================================================
+    // PHASE 5: NOTIFICATIONS, REVIEW WORKSPACE & ABOUT MODALS
+    // =========================================================================
+
+    function openAboutModal() {
+      document.getElementById('modal-about-limitations').classList.add('show');
+    }
+
+    function closeAboutModal() {
+      document.getElementById('modal-about-limitations').classList.remove('show');
+    }
+
+    let notificationsOpen = false;
+    function toggleNotificationsDropdown() {
+      const menu = document.getElementById('notifications-menu');
+      notificationsOpen = !notificationsOpen;
+      menu.style.display = notificationsOpen ? 'block' : 'none';
+      if (notificationsOpen) loadNotifications();
+    }
+
+    // Close notifications dropdown on outside click
+    document.addEventListener('click', (e) => {
+      const wrap = document.querySelector('.notifications-dropdown-wrap');
+      if (wrap && !wrap.contains(e.target)) {
+        const menu = document.getElementById('notifications-menu');
+        if (menu) menu.style.display = 'none';
+        notificationsOpen = false;
+      }
+    });
+
+    async function loadNotifications() {
+      try {
+        const res = await API.get('/api/notifications');
+        const notifs = res.data || [];
+        const unreadCount = res.unread_count || 0;
+        
+        const badge = document.getElementById('notification-badge');
+        if (unreadCount > 0) {
+          badge.textContent = unreadCount > 9 ? '9+' : unreadCount;
+          badge.style.display = 'inline-block';
+        } else {
+          badge.style.display = 'none';
+        }
+
+        const list = document.getElementById('notifications-list');
+        if (notifs.length === 0) {
+          list.innerHTML = `<div style="text-align:center; color:var(--color-text-muted); font-size:0.8rem; padding:1rem;">No notifications.</div>`;
+          return;
+        }
+
+        list.innerHTML = notifs.map(n => `
+          <div style="background: ${n.is_read ? '#FFFFFF' : '#F0FDFA'}; border: 1px solid ${n.is_read ? 'var(--color-border)' : '#99F6E4'}; padding: 0.5rem; border-radius: var(--radius-sm); font-size: 0.775rem;">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom: 0.2rem;">
+              <strong style="color: ${n.severity === 'critical' ? 'var(--color-emergency)' : 'var(--color-primary-dark)'};">${n.title}</strong>
+              <small style="color: #64748B; font-size: 0.7rem;">${new Date(n.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</small>
+            </div>
+            <p style="margin: 0 0 0.4rem 0; color: #334155;">${n.message}</p>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <span class="badge ${n.severity === 'critical' ? 'badge-stat' : (n.severity === 'warning' ? 'badge-urgent' : 'badge-routine')}" style="font-size:0.65rem;">${n.type.toUpperCase()}</span>
+              ${!n.is_read ? `<button onclick="markNotificationRead('${n.id}')" style="background:none; border:none; color:var(--color-teal); cursor:pointer; font-size:0.7rem; font-weight:700;">Mark Read</button>` : ''}
+            </div>
+          </div>
+        `).join('');
+      } catch (err) {
+        console.warn("Failed to load notifications:", err);
+      }
+    }
+
+    async function markNotificationRead(id) {
+      try {
+        await API.patch(`/api/notifications/${id}/read`);
+        await loadNotifications();
+      } catch (err) {
+        console.error("Failed to mark notification read:", err);
+      }
+    }
+
+    async function markAllNotificationsRead() {
+      try {
+        await API.post('/api/notifications/mark-all-read');
+        await loadNotifications();
+        API.toast("All notifications marked as read.", "success");
+      } catch (err) {
+        console.error("Failed to mark all read:", err);
+      }
+    }
+
+    // Review Workspace Logic
+    let rwChartInstance = null;
+
+    async function openReviewWorkspace(reportId) {
+      if (user.role !== 'cardiologist' && user.role !== 'admin') {
+        API.toast("Clinical Review Workspace is restricted to Cardiologists and Administrators.", "error");
+        return;
+      }
+
+      const modal = document.getElementById('modal-review-workspace');
+      modal.classList.add('show');
+      document.getElementById('rw-report-id').value = reportId;
+
+      try {
+        // Fetch status & analysis
+        const [statusRes, analysisRes, draftRes, historyRes] = await Promise.all([
+          API.get(`/api/ecg/${reportId}/status`).catch(() => ({})),
+          API.get(`/api/ecg/${reportId}/analysis`).catch(() => ({})),
+          API.get(`/api/reviews/draft/${reportId}`).catch(() => ({})),
+          API.get(`/api/reviews/report/${reportId}/history`).catch(() => ({}))
+        ]);
+
+        const rep = statusRes.data || {};
+        const analysis = analysisRes.data || {};
+        const draft = draftRes.data || null;
+        const history = historyRes.data || [];
+
+        // Patient summary
+        document.getElementById('rw-patient-code').textContent = rep.patient_code || 'MG-RECORD';
+        document.getElementById('rw-patient-name').textContent = rep.patient_name || 'Patient';
+        document.getElementById('rw-patient-room').textContent = rep.room_bed || 'CCU';
+
+        // Scores
+        const scores = analysis.scores || {};
+        document.getElementById('rw-score-norm').textContent = scores.NORM !== undefined ? scores.NORM.toFixed(2) : '--';
+        document.getElementById('rw-score-mi').textContent = scores.MI !== undefined ? scores.MI.toFixed(2) : '--';
+        document.getElementById('rw-score-sttc').textContent = scores.STTC !== undefined ? scores.STTC.toFixed(2) : '--';
+        document.getElementById('rw-score-cd').textContent = scores.CD !== undefined ? scores.CD.toFixed(2) : '--';
+        document.getElementById('rw-score-hyp').textContent = scores.HYP !== undefined ? scores.HYP.toFixed(2) : '--';
+
+        // Digital Waveform or Non-ML document
+        const canvas = document.getElementById('rw-ecg-canvas');
+        const nonMlView = document.getElementById('rw-non-ml-view');
+        
+        if (rep.file_type === 'digital_12lead') {
+          canvas.style.display = 'block';
+          nonMlView.style.display = 'none';
+          document.getElementById('rw-pipeline-badge').textContent = 'DIGITAL 12-LEAD WAVEFORM';
+          document.getElementById('rw-pipeline-badge').className = 'badge badge-teal';
+
+          // Render waveform snippet
+          if (rwChartInstance) rwChartInstance.destroy();
+          const ctx = canvas.getContext('2d');
+          const samplePoints = Array.from({length: 120}, (_, i) => Math.sin(i * 0.15) * 0.8 + (i % 25 === 10 ? 2.5 : 0));
+          rwChartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+              labels: samplePoints.map((_, i) => `${i}ms`),
+              datasets: [{
+                label: 'Lead II (mV)',
+                data: samplePoints,
+                borderColor: '#14B8A6',
+                borderWidth: 1.5,
+                pointRadius: 0,
+                fill: false,
+                tension: 0.2
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: { legend: { display: false } },
+              scales: { x: { display: false }, y: { display: true, min: -1.5, max: 3.5 } }
+            }
+          });
+        } else {
+          canvas.style.display = 'none';
+          nonMlView.style.display = 'flex';
+          document.getElementById('rw-pipeline-badge').textContent = (rep.file_type || 'DOCUMENT').toUpperCase();
+          document.getElementById('rw-pipeline-badge').className = 'badge badge-routine';
+        }
+
+        // Restore draft if present
+        if (draft) {
+          if (draft.rhythm) document.getElementById('rw-rhythm').value = draft.rhythm;
+          if (draft.st_t_findings) document.getElementById('rw-st-t').value = draft.st_t_findings;
+          if (draft.conduction) document.getElementById('rw-conduction').value = draft.conduction;
+          if (draft.clinical_findings) document.getElementById('rw-findings').value = draft.clinical_findings;
+          if (draft.diagnosis) document.getElementById('rw-diagnosis').value = draft.diagnosis;
+          if (draft.recommendation) document.getElementById('rw-recommendation').value = draft.recommendation;
+          if (draft.urgency_assignment) document.getElementById('rw-urgency').value = draft.urgency_assignment;
+          if (draft.agreement_with_model) document.getElementById('rw-agreement').value = draft.agreement_with_model;
+          API.toast("Restored active in-progress draft for this report.", "info");
+        } else {
+          document.getElementById('form-doctor-review').reset();
+          document.getElementById('rw-report-id').value = reportId;
+        }
+
+        // Review history display
+        const historySec = document.getElementById('rw-history-section');
+        const historyList = document.getElementById('rw-history-list');
+        if (history.length > 0) {
+          historySec.style.display = 'block';
+          historyList.innerHTML = history.map(h => `
+            <div style="margin-bottom: 0.4rem; padding-bottom: 0.3rem; border-bottom: 1px dashed var(--color-border);">
+              <strong>Version ${h.version || 1} &bull; ${new Date(h.signed_at || h.created_at).toLocaleString()}</strong><br>
+              <em>Diagnosis:</em> ${h.diagnosis} &bull; <em>Rhythm:</em> ${h.rhythm || 'Sinus'}<br>
+              <small>${h.clinical_findings}</small>
+            </div>
+          `).join('');
+        } else {
+          historySec.style.display = 'none';
+        }
+
+      } catch (err) {
+        API.toast(`Failed to load review workspace: ${err.message}`, "error");
+      }
+    }
+
+    function closeReviewWorkspace() {
+      document.getElementById('modal-review-workspace').classList.remove('show');
+      if (rwChartInstance) {
+        rwChartInstance.destroy();
+        rwChartInstance = null;
+      }
+    }
+
+    async function saveReviewDraftAction() {
+      const reportId = document.getElementById('rw-report-id').value;
+      if (!reportId) return;
+
+      const payload = {
+        report_id: reportId,
+        rhythm: document.getElementById('rw-rhythm').value,
+        st_t_findings: document.getElementById('rw-st-t').value,
+        conduction: document.getElementById('rw-conduction').value,
+        clinical_findings: document.getElementById('rw-findings').value,
+        diagnosis: document.getElementById('rw-diagnosis').value,
+        recommendation: document.getElementById('rw-recommendation').value,
+        urgency_assignment: document.getElementById('rw-urgency').value,
+        agreement_with_model: document.getElementById('rw-agreement').value
+      };
+
+      try {
+        await API.post('/api/reviews/draft', payload);
+        API.toast("Review draft saved successfully. You can return to finalize it anytime.", "success");
+      } catch (err) {
+        API.toast(`Failed to save draft: ${err.message}`, "error");
+      }
+    }
+
+    async function submitDoctorReview(e) {
+      e.preventDefault();
+      const reportId = document.getElementById('rw-report-id').value;
+      const btn = document.getElementById('btn-submit-review');
+      btn.disabled = true;
+      btn.textContent = 'Signing Review...';
+
+      const payload = {
+        report_id: reportId,
+        rhythm: document.getElementById('rw-rhythm').value,
+        st_t_findings: document.getElementById('rw-st-t').value,
+        conduction: document.getElementById('rw-conduction').value,
+        clinical_findings: document.getElementById('rw-findings').value,
+        diagnosis: document.getElementById('rw-diagnosis').value,
+        recommendation: document.getElementById('rw-recommendation').value,
+        urgency_assignment: document.getElementById('rw-urgency').value,
+        agreement_with_model: document.getElementById('rw-agreement').value,
+        schedule_follow_up: !!document.getElementById('rw-followup-date').value,
+        follow_up_date: document.getElementById('rw-followup-date').value || null
+      };
+
+      try {
+        await API.post('/api/reviews', payload);
+        API.toast("Doctor review successfully signed, finalized and stored in append-only clinical record!", "success");
+        closeReviewWorkspace();
+        await loadDashboardStats();
+        await loadPriorityQueue();
+        await loadRecentUploads();
+      } catch (err) {
+        API.toast(`Failed to finalize review: ${err.message}`, "error");
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '✍️ Sign & Finalize Review';
+      }
+    }
+
+    // Load initial data on startup
+    document.addEventListener("DOMContentLoaded", async () => {
+      await loadDashboardStats();
+      await loadPriorityQueue();
+      await loadRecentUploads();
+      await loadPatients(1);
+      await loadDashboardCharts();
+      await loadNotifications();
+
+      // Poll notifications every 30 seconds
+      setInterval(loadNotifications, 30000);
+    });
+  </script>
+</body>
+</html>

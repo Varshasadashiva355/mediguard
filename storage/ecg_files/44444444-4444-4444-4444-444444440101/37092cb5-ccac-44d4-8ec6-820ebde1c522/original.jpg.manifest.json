@@ -1,0 +1,12 @@
+{
+  "report_id": "37092cb5-ccac-44d4-8ec6-820ebde1c522",
+  "patient_id": "44444444-4444-4444-4444-444444440101",
+  "file_name": "comp_img.jpg",
+  "storage_path": "44444444-4444-4444-4444-444444440101/37092cb5-ccac-44d4-8ec6-820ebde1c522/original.jpg",
+  "sha256": "01705ea3a83b43dc91e7f80919bdf30765c70a5eba65b9c97b5310548021ff63",
+  "size_bytes": 2527,
+  "content_type": "image/jpeg",
+  "uploaded_at": "2026-11-13T23:59:20.074288+00:00",
+  "encrypted": true,
+  "version": "1.0"
+}

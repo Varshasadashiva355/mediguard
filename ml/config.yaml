@@ -1,0 +1,48 @@
+# MediGuard AI – ML Pipeline Configuration
+# Multi-Label Diagnostic Superclass Classification on PTB-XL v1.0.3
+
+data:
+  raw_dir: "dataset/ptb-xl"
+  processed_dir: "dataset/processed"
+  sampling_rate: 100 # 100 or 500 Hz
+  duration_sec: 10
+  leads: ["I", "II", "III", "aVR", "aVL", "aVF", "V1", "V2", "V3", "V4", "V5", "V6"]
+  superclasses: ["NORM", "MI", "STTC", "CD", "HYP"]
+  min_likelihood: 50 # Minimum statement confidence in scp_codes
+
+preprocessing:
+  bandpass_low: 0.5 # Hz
+  bandpass_high: 40.0 # Hz
+  filter_order: 2 # 2nd order Butterworth (zero-phase filtfilt)
+  apply_baseline_removal: true
+  quality_thresholds:
+    max_flatline_sec: 0.5
+    max_clipping_ratio: 0.05
+    max_noise_ratio: 0.25
+
+model:
+  name: "ResNet1D_MediGuard"
+  in_channels: 12
+  num_classes: 5
+  base_filters: 64
+  kernel_size: 7
+  dropout: 0.3
+  version: "v1.0.0-ptbxl"
+
+training:
+  seed: 42
+  batch_size: 64
+  epochs: 15
+  learning_rate: 0.001
+  weight_decay: 0.01
+  pos_weight: true # Dynamic positive weighting for imbalanced superclasses
+  grad_clip: 1.0
+  early_stopping_patience: 4
+  scheduler: "cosine"
+  device: "auto"
+
+checkpoints:
+  save_dir: "saved_models"
+  best_name: "best_model.pt"
+  last_name: "last_model.pt"
+  metrics_file: "metrics.json"
